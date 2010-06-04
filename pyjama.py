@@ -3,18 +3,35 @@ import ast
 x=object
 
 class BaseScope:
-    closure = '__dict__'
+    def __init__(self, parent=None):
+        self.vars=[]
+        self.parent=parent
 
-    def lookup(self, name):
-        return self.closure + '.' + name
+    def define(self, name):
+        # reports the existence of a new variable in the scope
+        if name not in self.vars:
+            self.vars+=[name]
+
+    def __contains__(self, item):
+        return self.contains_local(item) or (self.parent and item in self.parent)
+
+    def contains_local(self, name): return name in self.vars
+
+    def root_scope(self):
+        if not self.parent:
+            return self
+        else:
+            return self.parent.root_scope()
+
+    def __iter__(self): return self.vars.__iter__()
 
 def compile(program):
     compiler=JCompiler()
     tree=ast.parse(program)
 
-    class TopScope(BaseScope):
-        name='main'
-    return compiler.visit(tree, TopScope())
+    class ProgramScope(BaseScope): name='main'
+
+    return compiler.visit(tree,  ProgramScope())
 
 def concat(separator):
     def decorator(func):
@@ -24,10 +41,11 @@ def concat(separator):
     return decorator
 
 class JCompiler:
-    builtinFunc={
-        'closure': 'py.__closure', # creates a local scope
-        'type': 'py.type',
-    }
+    builtins=['type']
+
+    def import_builtins(self):
+        namespace='py'
+        return 'var %s;' % ', '.join('%(var)s=%(namespace)s.%(var)s' % {'var': var, 'namespace': namespace} for var in self.builtins)
 
     def visit(self, node, scope):
         """Visit a node."""
@@ -54,8 +72,17 @@ class JCompiler:
                 # raise Exception()
 
     @staticmethod
-    def indent(code):
-        return '\n'.join('    '+ line for line in code.splitlines())
+    def indent(code): return '\n'.join('    '+ line for line in code.splitlines())
+
+    @staticmethod
+    def scope_vars_declaration(scope):
+        # returns the variable declaration line with all the scope locals
+        return 'var %s;' % ', '.join(var for var in scope.vars) if scope.vars else ''
+
+    @staticmethod
+    def scope_vars_assignment(scope, module_name):
+        return '\n'.join('%(module)s.%(var)s = %(var)s;' % {'module': module_name, 'var': var}
+            for var in scope.vars) if scope.vars else ''
 
     def visit_FunctionDef(self, node, scope):
         # FunctionDef(identifier name, arguments args,
@@ -67,62 +94,76 @@ class JCompiler:
         # arg = (identifier arg, expr? annotation)
 
         template=\
-"""%(parent_closure)s.%(name)s = function(%(arguments)s){
-    var %(closure)s = %(closure_func)%(%(parent_closure)s);
+"""%(name)s = function (%(arguments)s){
+    %(vars)s
 %(code)s
 };"""
+
         arguments = [str(arg.arg) for arg in node.args.args]
+
         class FunctionScope(BaseScope):
-            def lookup(self, name):
-                if name in arguments:
-                    return name
-                else:
-                    return BaseScope.lookup(self,name)
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.arguments = arguments
+                self.name = str(node.name)
+
+            def contains_local(self, name):
+                return name in self.arguments or super().contains_local(name)
 
         name=str(node.name)
-        function_scope = FunctionScope()
+        function_scope = FunctionScope(scope)
         body=self.generic_visit_list(node.body, function_scope)
-        return template % {'closure': function_scope.closure,'parent_closure': scope.closure,
-                           'name': name, 'code': JCompiler.indent(body),
+        vars= JCompiler.scope_vars_declaration(function_scope)
+        scope.define(name)
+        return template % {'name': name, 'code': JCompiler.indent(body),
                            'arguments': ', '.join(arguments),
-                           'closure_func': JCompiler.builtinFunc['closure']}
+                           'vars': vars}
 
     def visit_ClassDef(self, node, scope):
         # ClassDef(identifier name, expr* bases, keyword* keywords, expr? starargs,
         #       expr? kwargs, stmt* body, expr *decorator_list)
         template=\
-"""%(parent_closure)s.%(name)s = (function(){
-    var %(closure)s = %(closure_func)s(%(parent_closure)s);
+"""%(name)s = (function(){
+    var __dict__={};
+    %(vars)s
 %(code)s
-    return %(type_func)s('%(name)s', [], %(closure)s);
+%(fields)s
+    return type('%(name)s', [], __dict__);
 })();"""
-        class ClassScope(BaseScope):
-            pass
 
-        class_scope=ClassScope()
+        class_scope=BaseScope(scope)
         body = self.generic_visit_list(node.body, class_scope)
         name = str(node.name)
+        vars=JCompiler.scope_vars_declaration(class_scope)
+        fields=JCompiler.scope_vars_assignment(class_scope, '__dict__')
+        scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body),
-                           'closure': class_scope.closure, 'parent_closure': scope.closure,
-                           'closure_func': JCompiler.builtinFunc['closure'],
-                           'type_func': JCompiler.builtinFunc['type'],}
+                           'vars': vars, 'fields': JCompiler.indent(fields)}
 
     def visit_Module(self, node, scope):
         module=\
-"""var %(name)s=(function(){
-    var %(closure)s = %(closure_func)s(%(parent_closure)s);
+"""%(builtins)s
+var %(name)s=(function(){
+    var %(name)s={};
+    %(vars)s
 %(code)s
-    return %(closure)s;
+%(fields)s
+    return %(name)s;
 })();"""
 
         class ModuleScope(BaseScope):
-            pass
+            name=scope.name
 
         module_scope = ModuleScope()
         visit = self.generic_visit_list(node.body, module_scope)
+        # all variables are declared at the start of the block, including functions
+        # note that only local variables are declared
+        vars= JCompiler.scope_vars_declaration(module_scope)
+        # assign fields to the module
+        fields = JCompiler.scope_vars_assignment(module_scope, module_scope.name)
         return module % {'name': scope.name, 'code': JCompiler.indent(visit),
-                         'closure': module_scope.closure, 'parent_closure': 'py',
-                         'closure_func': JCompiler.builtinFunc['closure']}
+                         'vars': vars, 'fields':JCompiler.indent(fields),
+                         'builtins': self.import_builtins()}
 
     def visit_Return(self, node, scope):
         # Return(expr? value)
@@ -133,11 +174,11 @@ class JCompiler:
 
     def visit_Delete(self, node, scope):
         # Delete(expr* targets)
-        return '\n'.join('delete %s;' % expr for expr in self.generic_visit_list(node.targets, scope))
+        return '\n'.join('%s = undefined;' % self.visit(expr,scope) for expr in node.targets)
 
     def visit_Assign(self, node, scope):
         # Assign(expr* targets, expr value)
-        return ' = '.join(self.visit(expr, scope) for expr in node.targets) + ' = ' + self.visit(node.value, scope)
+        return ' = '.join(self.visit(expr, scope) for expr in node.targets) + ' = ' + self.visit(node.value, scope) + ';'
 
     def visit_Num(self, node, scope):
         return str(node.n)
@@ -184,19 +225,37 @@ class JCompiler:
 
     def visit_Name(self, node, scope):
         # Name(identifier id, expr_context ctx)
-        if node.id=='True':
+        # expr_context = Load | Store | Del | AugLoad | AugStore | Param
+        name=str(node.id)
+
+        if name=='True':
             return 'true'
-        elif node.id=='False':
+        elif name=='False':
             return 'false'
         else:
-            return scope.lookup(str(node.id))
+            if isinstance(node.ctx, ast.Store): scope.define(name)
+
+            return name
 
 js=JCompiler()
 code="""
-class B(A):
-    pass
+x=5
+y=12
+z=x+y
+def foo(): return 1
 
-console.log('loaded')
+foo()
+bla()
+
+class B:
+    x=1
+    y=2
+    def print(self, arg): console.log(arg)
+    def helper(foo):
+        console.log(foo)
+        y=foo
+    helper(2)
+    del helper
 """
 program=compile(code)
 print(program)

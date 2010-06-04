@@ -100,31 +100,21 @@ var py=(function(){
         return Class;
     })();
 
-    function __closure(parent){
-        // creates a new closure
-        var __dict__=function(){};
-        if (typeof parent !== "undefined" && parent!==null)
-        {
-            __dict__.prototype=parent;
-            __dict__.prototype.constructor=__dict__;
+    var range=function(from, to){};
+    var iter=range(1,2);
+    var i;
+    while (true){
+        try{
+            i=iter.__next__();
+            // code
         }
-        return new __dict__();
+        catch
+        {
+//            $34=2
+            break;
+
+        }
     }
-    builtin.prototype.__closure=__closure;
-
-    var Class=(function(){
-        var __dict__ = __closure(__dict__);
-
-        __dict__.__new__ = function (cls) { return new function () { };};
-        __dict__.__init__ = function(self) { self.y=13; };
-
-        __dict__.bla = function (self){return 1;};
-        __dict__.__call__ = function(self){console.log('called');};
-
-        __dict__.cl=5;
-
-        return type('Class', [], __dict__);
-    })();
 
     return new builtin();
 })();
