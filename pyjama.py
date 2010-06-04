@@ -1,11 +1,19 @@
 from _ast import AST
 import ast
 x=object
+
+class BaseScope:
+    closure = '__dict__'
+
+    def lookup(self, name):
+        return self.closure + '.' + name
+
 def compile(program):
     compiler=JCompiler()
     tree=ast.parse(program)
 
-    class TopScope: name='main'
+    class TopScope(BaseScope):
+        name='main'
     return compiler.visit(tree, TopScope())
 
 def concat(separator):
@@ -16,6 +24,11 @@ def concat(separator):
     return decorator
 
 class JCompiler:
+    builtinFunc={
+        'closure': 'py.__closure', # creates a local scope
+        'type': 'py.type',
+    }
+
     def visit(self, node, scope):
         """Visit a node."""
         method = 'visit_' + node.__class__.__name__
@@ -48,64 +61,67 @@ class JCompiler:
         # FunctionDef(identifier name, arguments args,
         #   stmt* body, expr* decorator_list, expr? returns)
 
-        class FunctionScope:
-            def register(self, name, code):
-                return 'var %(name)s; %(name)s = %(code)s;' % {'name': name, 'code':code}
+        # arguments = (arg* args, identifier? vararg, expr? varargannotation, arg* kwonlyargs,
+        #           identifier? kwarg, expr? kwargannotation, expr* defaults, expr* kw_defaults)
+
+        # arg = (identifier arg, expr? annotation)
+
+        template=\
+"""%(parent_closure)s.%(name)s = function(%(arguments)s){
+    var %(closure)s = %(closure_func)%(%(parent_closure)s);
+%(code)s
+};"""
+        arguments = [str(arg.arg) for arg in node.args.args]
+        class FunctionScope(BaseScope):
+            def lookup(self, name):
+                if name in arguments:
+                    return name
+                else:
+                    return BaseScope.lookup(self,name)
 
         name=str(node.name)
-        body=self.generic_visit_list(node.body, FunctionScope())
-        code='function(){%s}' % body
-        return scope.register(name, code)
+        function_scope = FunctionScope()
+        body=self.generic_visit_list(node.body, function_scope)
+        return template % {'closure': function_scope.closure,'parent_closure': scope.closure,
+                           'name': name, 'code': JCompiler.indent(body),
+                           'arguments': ', '.join(arguments),
+                           'closure_func': JCompiler.builtinFunc['closure']}
 
     def visit_ClassDef(self, node, scope):
         # ClassDef(identifier name, expr* bases, keyword* keywords, expr? starargs,
         #       expr? kwargs, stmt* body, expr *decorator_list)
         template=\
-"""(function(){
-    function __%(name)s(){
-        var instance = create(__%(name)s);
-        instance.__class__= __%(name)s;
-        bound_members(instance, __%(name)s);
-        return instance;
-    }
-    extend(__%(name)s, object);
-
-    Class.__name__='%(name)s';
-
+"""%(parent_closure)s.%(name)s = (function(){
+    var %(closure)s = %(closure_func)s(%(parent_closure)s);
 %(code)s
+    return %(type_func)s('%(name)s', [], %(closure)s);
+})();"""
+        class ClassScope(BaseScope):
+            pass
 
-    return __%(name)s;
-})()"""
-        class ClassScope:
-            def register(self, name, code):
-                return 'var %(name)s; %(name)s = __%(class_name)s.%(name)s = %(code)s;' \
-                    % {'name': name, 'class_name': node.name,'code':code}
-        body = self.generic_visit_list(node.body, ClassScope())
+        class_scope=ClassScope()
+        body = self.generic_visit_list(node.body, class_scope)
         name = str(node.name)
-        code=template % {'name': name, 'code': JCompiler.indent(body)}
-        return scope.register(name, code)
+        return template % {'name': name, 'code': JCompiler.indent(body),
+                           'closure': class_scope.closure, 'parent_closure': scope.closure,
+                           'closure_func': JCompiler.builtinFunc['closure'],
+                           'type_func': JCompiler.builtinFunc['type'],}
 
     def visit_Module(self, node, scope):
         module=\
 """var %(name)s=(function(){
-    var __%(name)s={
-        __name__: '%(name)s'
-    };
-
+    var %(closure)s = %(closure_func)s(%(parent_closure)s);
 %(code)s
+    return %(closure)s;
+})();"""
+        class ModuleScope(BaseScope):
+            closure = '__global__'
 
-    return __%(name)s;
-})();
-"""
-        class ModuleScope:
-            closure = '__%s' % scope.name
-
-            def register(self, name, code):
-                return 'var %(name)s; %(name)s = __%(module_name)s.%(name)s = %(code)s;' \
-                        % {'name': name, 'module_name': scope.name, 'code':code}
-
-        visit = self.generic_visit_list(node.body, ModuleScope())
-        return module % {'name': scope.name, 'code': JCompiler.indent(visit)}
+        module_scope = ModuleScope()
+        visit = self.generic_visit_list(node.body, module_scope)
+        return module % {'name': scope.name, 'code': JCompiler.indent(visit),
+                         'closure': module_scope.closure, 'parent_closure': 'py',
+                         'closure_func': JCompiler.builtinFunc['closure']}
 
     def visit_Return(self, node, scope):
         # Return(expr? value)
@@ -120,7 +136,7 @@ class JCompiler:
 
     def visit_Assign(self, node, scope):
         # Assign(expr* targets, expr value)
-        chain=' = '.join('%s = ')
+        return ' = '.join(self.visit(expr, scope) for expr in node.targets) + ' = ' + self.visit(node.value, scope)
 
     def visit_Num(self, node, scope):
         return str(node.n)
@@ -151,6 +167,20 @@ class JCompiler:
         right=self.visit(node.right, scope)
         return '%(left)s %(operator)s %(right)s' % {'left': left, 'operator': op, 'right': right}
 
+    def visit_Call(self, node, scope):
+        # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
+        template='%(func)s(%(args)s);'
+        return template % {'func': self.visit(node.func, scope),
+                           'args': self.generic_visit_list(node.args, scope)}
+
+    def visit_Str(self, node, scope):
+        # Str(string s)
+        return "\"%s\"" % node.s
+
+    def visit_Attribute(self, node, scope):
+        # Attribute(expr value, identifier attr, expr_context ctx)
+        return '%(value)s.%(identifier)s' % { 'value':self.visit(node.value, scope), 'identifier': str(node.attr)}
+
     def visit_Name(self, node, scope):
         # Name(identifier id, expr_context ctx)
         if node.id=='True':
@@ -158,15 +188,15 @@ class JCompiler:
         elif node.id=='False':
             return 'false'
         else:
-            return node.id
+            return scope.lookup(str(node.id))
 
 js=JCompiler()
 code="""
-def visit_Name(node, scope):
-    return 1+1 and True
+class B(A):
+    pass
 
-class A:
-    def foo(x,y): return True
+console.log('loaded')
 """
 program=compile(code)
 print(program)
+

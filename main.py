@@ -7,8 +7,8 @@ class A:
 class B(A):
     pass
 
-b=B()
-
-A.xx=1
-
-print(b.xx)
+x=1
+def foo():
+    x=123
+foo()
+print(x)
