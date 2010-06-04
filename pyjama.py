@@ -94,10 +94,13 @@ class JCompiler:
         # arg = (identifier arg, expr? annotation)
 
         template=\
-"""%(name)s = function (%(arguments)s){
-    %(vars)s
-%(code)s
-};"""
+"""%(name)s = (function(){
+    function %(name)s(%(arguments)s){
+        %(vars)s
+        %(code)s
+    };
+
+})();"""
 
         arguments = [str(arg.arg) for arg in node.args.args]
 
@@ -128,17 +131,22 @@ class JCompiler:
     %(vars)s
 %(code)s
 %(fields)s
-    return type('%(name)s', [], __dict__);
+    return type('%(name)s', [%(bases)s], __dict__);
 })();"""
 
         class_scope=BaseScope(scope)
+        # 1. It first evaluates the inheritance list
+        bases=', '.join(self.visit(base, scope) for base in node.bases) # the bases use the parent scope
+        # 2. The class’s suite is then executed in a new execution frame
         body = self.generic_visit_list(node.body, class_scope)
         name = str(node.name)
         vars=JCompiler.scope_vars_declaration(class_scope)
         fields=JCompiler.scope_vars_assignment(class_scope, '__dict__')
+
         scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body),
-                           'vars': vars, 'fields': JCompiler.indent(fields)}
+                           'vars': vars, 'fields': JCompiler.indent(fields),
+                           'bases': bases}
 
     def visit_Module(self, node, scope):
         module=\
@@ -239,23 +247,10 @@ var %(name)s=(function(){
 
 js=JCompiler()
 code="""
-x=5
-y=12
-z=x+y
-def foo(): return 1
-
-foo()
-bla()
-
-class B:
+class A:
     x=1
-    y=2
-    def print(self, arg): console.log(arg)
-    def helper(foo):
-        console.log(foo)
-        y=foo
-    helper(2)
-    del helper
+    def __call__(self, x):
+        console.log(x)
 """
 program=compile(code)
 print(program)
