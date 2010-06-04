@@ -114,8 +114,9 @@ class JCompiler:
 %(code)s
     return %(closure)s;
 })();"""
+
         class ModuleScope(BaseScope):
-            closure = '__global__'
+            pass
 
         module_scope = ModuleScope()
         visit = self.generic_visit_list(node.body, module_scope)
