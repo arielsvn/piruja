@@ -2,18 +2,8 @@ var py;
 py = (function () {
     var builtin = {};
 
-    function instance_method(name) {
-        return name !== '__init__' && name !== '__new__';
-    }
-
     function isinstance(item, classinfo) {
         return item.__class__ === classinfo;
-    }
-
-    function create(classinfo) {
-        var instance = classinfo.__new__(classinfo);
-        classinfo.__init__(instance);
-        return instance;
     }
 
     builtin.staticmethod = function (func) {
@@ -24,16 +14,18 @@ py = (function () {
         return wrapper();
     };
 
-    function bound_members(instance, classinfo) {
-        function append(item, array) {
-            // adds the item on the first position of the array
-            var result = new Array(array.length + 1);
-            result[0] = item;
-            for (var i = 1; i < result.length; i++)
-                result[i] = array[i - 1];
-            return result;
-        }
+    function append(item, array) {
+        var length=1;
+        if (array) length=array.length+1;
+        // adds the item on the first position of the array
+        var result = new Array(length);
+        result[0] = item;
+        for (var i = 1; i < result.length; i++)
+            result[i] = array[i - 1];
+        return result;
+    }
 
+    function bound_members(instance, classinfo) {
         function bound(name) {
             var method = classinfo[name];
             instance[name] = function () {
@@ -41,9 +33,10 @@ py = (function () {
             };
         }
 
-        for (key in classinfo) {
+        for (var key in classinfo) {
             if (typeof(classinfo[key]) === 'function') {
-                if (instance_method(key)) {
+                if (key != '__new__') {
+                    // bound all members except the constructor
                     bound(key);
                 }
             }
@@ -140,61 +133,53 @@ py = (function () {
                 child[key] = parent[key];
 
         // add the parent to the bases list
+        child.__base__=parent;
         child.__bases__.push(parent);
     }
 
-    builtin.type = (function () {
-        function type(name, bases, dict) {
-            if (arguments.length == 1)
-                return name.__class__;
-            else {
-                function Class() {
-                    var instance = create(Class);
-                    instance.__class__ = Class;
-                    bound_members(instance, Class);
-                    return instance;
-                }
+    function create(classinfo, args) {
+        var instance = classinfo.__new__.apply(classinfo, append(classinfo, args));
+        classinfo.__init__.apply(instance, append(instance, args));
 
-                // init the bases list, it will be populated with the extend method
-                // and isn't going to be copied from the base class
-                Class.__bases__ = [];
 
-                extend(Class, builtin.object);
-                copy_members(dict, Class);
-
-                Class.__name__ = name;
-                Class.__dict__ = dict;
-
-                return Class
-            }
-        }
-
-        return type;
-    })();
+        return instance;
+    }
 
     builtin.object = (function () {
         function object() {
-            var instance = create(object);
-            instance.__class__ = object;
-            bound_members(instance, object);
-            return instance;
+            return object.__call__.apply(object, arguments);
         }
 
         object.__name__ = 'object';
         object.__new__ = function (cls) {
-            function result() {
-                if (!('__call__' in result))
-                    throw 'object is not callable';
+            // Called to create a new instance of class cls. __new__() is a static method
+            // don't need to declare it as such
+            // when object is called returns a new instance
 
-                return result.__call__.apply(result, arguments);
+            // allocate memory for the object
+            if (cls === object){
+                // this will be the object instance
+                // note that when called calls the __call__ method
+                function result() {
+                    if (!('__call__' in result))
+                        throw 'object is not callable';
+
+                    return result.__call__.apply(result, arguments);
+                }
+
+                result.__class__ = cls;
+                result.__dict__ = cls.__dict__;
+
+                // instance don't inherit, instead bound class members (copy and add self parameter)
+                bound_members(result, cls);
+                return result;
+            } else {
+                return cls.__new__.apply(cls, arguments);
             }
-
-            return result;
         };
         object.__init__ = function (self) { };
         object.__base__ = undefined; // object.__base__ returns nothing
         object.__bases__ = [];
-        object.__class__ = builtin.type;
 
         object.__setattr__ = function (self, name, value) {
             throw new AttributeError(object, name);
@@ -206,11 +191,58 @@ py = (function () {
             self[name] = undefined
         };
 
+        object.__call__ = function(){
+            // when object is called returns a new instance
+            var instance= object.__new__.apply(object, append(object, arguments));
+            instance.__init__.apply(instance, arguments);
+            return instance;
+        };
+
         return object;
     })();
 
-    builtin.type.__bases__ = [builtin.object];
-    builtin.type.__base__ = builtin.object;
+    builtin.type = (function () {
+        // type(object) -> the object's type
+        // type(name, bases, dict) -> a new type
+        function type(name, bases, dict) {
+            if (arguments.length == 1)
+                return name.__class__;
+            else {
+                return type.__call__(name, bases, dict);
+            }
+        }
+
+        type.__bases__=[];
+        extend(type, builtin.object);
+
+        type.__call__ = function(name, bases, dict){
+            // when a type is called it returns a new type
+            function Class() {
+                var instance = create(Class);
+                instance.__class__ = Class;
+                bound_members(instance, Class);
+                return instance;
+            }
+
+            // init the bases list, it will be populated with the extend method
+            // and isn't going to be copied from the base class
+            Class.__bases__ = [];
+            Class.__class__ = type;
+
+            extend(Class, builtin.object);
+
+            copy_members(dict, Class);
+
+            Class.__name__ = name;
+            Class.__dict__ = dict;
+
+            return Class
+        };
+
+        return type;
+    })();
+
+    builtin.object.__class__ = builtin.type;
 
     builtin.function_base=(function(){
         // all functions inherit from the class function in python, however
@@ -220,6 +252,8 @@ py = (function () {
             return function_base.__call__.apply(function_base, arguments);
         }
 
+        function_base.__bases__=[];
+        extend(function_base, builtin.object);
 
 
         return function_base;
