@@ -53,11 +53,14 @@ class JCompiler:
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node, scope)
 
-    @concat('\n')
-    def generic_visit_list(self, value, scope):
-        for item in value:
-            if isinstance(item, AST):
-                yield self.visit(item, scope)
+    def generic_visit_list(self, value, scope, separator = '\n'):
+        def visit():
+            for item in value:
+                if isinstance(item, AST):
+                    yield self.visit(item, scope)
+        if separator:
+            return separator.join(item for item in visit())
+        else: return visit()
 
     @concat('\n')
     def generic_visit(self, node, scope):
@@ -78,6 +81,12 @@ class JCompiler:
             return indented
         else:
             return JCompiler.indent(indented, times-1)
+
+    def code_block(self, stmt_list, scope):
+        if len(stmt_list)>1:
+            return '{ \n%s \n}' %  JCompiler.indent(self.generic_visit_list(stmt_list, scope))
+        else:
+            return self.visit(stmt_list[0], scope)
 
     @staticmethod
     def scope_vars_declaration(scope):
@@ -208,11 +217,47 @@ var %(name)s=(function(){
         # Assign(expr* targets, expr value)
         return ' = '.join(self.visit(expr, scope) for expr in node.targets) + ' = ' + self.visit(node.value, scope) + ';'
 
+    def visit_If(self, node, scope):
+        # If(expr test, stmt* body, stmt* orelse)
+        template=\
+"""if (%(test)s) %(body)s
+%(extra)s"""
+
+        return template % {'test': self.visit(node.test, scope),
+                           'body': self.code_block(node.body, scope),
+                           'extra': ('else %s' % self.code_block(node.orelse, scope)) if node.orelse else ''}
+
+    def visit_While(self, node, scope):
+        # While(expr test, stmt* body, stmt* orelse)
+        if not node.orelse:
+            template="while (%(test)s) %(body)s"
+            return template % {'test': self.visit(node.test, scope), 'body': self.code_block(node.body, scope)}
+        else:
+            transformed= ast.copy_location(ast.While(
+                test=ast.Name(id='True'),
+                body=[ast.If(
+                    test=node.test,
+                    body=node.body,
+                    orelse=node.orelse + [ast.Break()]
+                )],
+                orelse=[]
+            ), node)
+            return self.visit(transformed, scope)
+
     def visit_Num(self, node, scope):
         return str(node.n)
 
     def visit_Not(self, node, scope):
         return "!" + self.visit(node.expr, scope)
+
+    def visit_Pass(self, node, scope):
+        return ''
+
+    def visit_Break(self, node, scope):
+        return 'break'
+
+    def visit_Continue(self, node, scope):
+        return 'continue'
 
     def visit_BoolOp(self, node, scope):
         # BoolOp(boolop op, expr* values)
@@ -239,9 +284,9 @@ var %(name)s=(function(){
 
     def visit_Call(self, node, scope):
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
-        template='%(func)s(%(args)s);'
+        template='%(func)s(%(args)s)'
         return template % {'func': self.visit(node.func, scope),
-                           'args': self.generic_visit_list(node.args, scope)}
+                           'args': self.generic_visit_list(node.args, scope, ', ')}
 
     def visit_Str(self, node, scope):
         # Str(string s)
@@ -267,14 +312,12 @@ var %(name)s=(function(){
 
 js=JCompiler()
 code="""
-def __call__(y, x=10, *args, **kwargs):
-    console.log(x)
-
-    class A:
-        def foo(): pass
-
-    return A
+while 1+1:
+    if 2+2:
+        break
+    else: continue
+    print (1)
 """
+iter
 program=compile(code)
 print(program)
-
