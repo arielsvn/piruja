@@ -17,11 +17,11 @@ class BaseScope:
 
     def contains_local(self, name): return name in self.vars
 
-    def root_scope(self):
+    def root(self):
         if not self.parent:
             return self
         else:
-            return self.parent.root_scope()
+            return self.parent.root()
 
     def __iter__(self): return self.vars.__iter__()
 
@@ -41,7 +41,7 @@ def concat(separator):
     return decorator
 
 class JCompiler:
-    builtins=['type']
+    builtins=['type','function_base']
 
     def import_builtins(self):
         namespace='py'
@@ -72,7 +72,12 @@ class JCompiler:
                 # raise Exception()
 
     @staticmethod
-    def indent(code): return '\n'.join('    '+ line for line in code.splitlines())
+    def indent(code, times = 1):
+        indented = '\n'.join('    ' + line for line in code.splitlines())
+        if times ==1:
+            return indented
+        else:
+            return JCompiler.indent(indented, times-1)
 
     @staticmethod
     def scope_vars_declaration(scope):
@@ -97,12 +102,27 @@ class JCompiler:
 """%(name)s = (function(){
     function %(name)s(%(arguments)s){
         %(vars)s
-        %(code)s
-    };
+%(code)s
+    }
 
+    var attributes={
+        name = '%(name)s',
+        module = '%(module_name)s',
+        defaults = [%(defaults)s],
+        globals = %(module_name)s,
+        kwdefaults = {}
+    }
+
+    return function_base(attributes, %(name)s);
 })();"""
 
         arguments = [str(arg.arg) for arg in node.args.args]
+        if node.args.vararg:
+            arguments+=[node.args.vararg]
+        if node.args.kwarg:
+            arguments+=[node.args.kwarg]
+
+        defaults = ', '.join(self.visit(expr,scope) for expr in node.args.defaults)
 
         class FunctionScope(BaseScope):
             def __init__(self, parent=None):
@@ -118,9 +138,9 @@ class JCompiler:
         body=self.generic_visit_list(node.body, function_scope)
         vars= JCompiler.scope_vars_declaration(function_scope)
         scope.define(name)
-        return template % {'name': name, 'code': JCompiler.indent(body),
-                           'arguments': ', '.join(arguments),
-                           'vars': vars}
+        return template % {'name': name, 'code': JCompiler.indent(body,2),
+                           'arguments': ', '.join(arguments), 'vars': vars,
+                           'module_name': scope.root().name, 'defaults': defaults}
 
     def visit_ClassDef(self, node, scope):
         # ClassDef(identifier name, expr* bases, keyword* keywords, expr? starargs,
@@ -247,10 +267,13 @@ var %(name)s=(function(){
 
 js=JCompiler()
 code="""
-class A:
-    x=1
-    def __call__(self, x):
-        console.log(x)
+def __call__(y, x=10, *args, **kwargs):
+    console.log(x)
+
+    class A:
+        def foo(): pass
+
+    return A
 """
 program=compile(code)
 print(program)
