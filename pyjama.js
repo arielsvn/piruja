@@ -411,21 +411,22 @@ var main=(function(){
     C = (function(){
         var __dict__={};
         var foo, bla;
-        foo = (function(){
-            function foo(self){
+        foo = (function() {
+            function foo(self) {
 
                 A.foo(self)
                 B.foo(self)
                 print("foo from C")
             }
 
-            var attributes={
-                name: 'foo',
-                module: 'main',
-                defaults: [],
-                globals: main,
-                kwdefaults: {}
-            }
+            var attributes;
+            attributes = {
+                name:'foo',
+                module:'main',
+                defaults:[],
+                globals:main,
+                kwdefaults:{}
+            };
 
             return function_base(attributes, foo);
         })();

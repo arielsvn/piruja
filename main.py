@@ -1,32 +1,12 @@
 
-class range_iter:
-    def __init__(self, start, stop = None, step = 1):
-        if not stop:
-            self.start=1
-            self.stop=start
-        else:
-            self.start = start
-            self.stop = stop
+class A:
+    pass
 
-        self.step = step
+class B(A):
+    pass
 
-    def __iter__(self):
-        parent=self
-        class Iter:
-            def __init__(self):
-                self.current=parent.start - parent.step
+A.foo=lambda self:4
 
-            def __iter__(self): return Iter()
+b=B()
 
-            def __next__(self):
-                self.current += parent.step
-
-                if self.current >= parent.stop:
-                    raise StopIteration
-
-                return self.current
-
-        return Iter()
-
-for i in range_iter(5):
-    print(i)
+print(b.foo())
