@@ -5,14 +5,15 @@ py = (function () {
     (function (){
         // prepare arrays to behave like python lists
 
-        // Called to implement the built-in function len().
+        // Called to implement the built-in function len()
         Array.prototype.__len__ = function(){return this.length;};
     })();
 
     var len;
     len = builtin.len = function(seq){
         if (seq.__len__)
-            return seq.__len__;
+            return seq.__len__();
+
         throw 'object has no length'
     };
 
@@ -293,8 +294,9 @@ py = (function () {
                 };
 
                 // TODO: Change this to add the methods like the new-style class (diamond form)
-                for (var base in bases.reverse())
-                    extend(Class, base)
+                var reversed = bases.reverse();
+                for (var i=0; i<len(reversed);i++)
+                    extend(Class, bases[i])
 
                 Class.__dict__ = dict;
                 copy_members(dict, Class);
@@ -321,7 +323,7 @@ py = (function () {
 
                 return self.__code__.apply(this, args);
             },
-            __init__: function(self, attributes, code){
+            __init__: function(self, attributes, code) {
                 // Note: __doc__, __dict__, __closure__, __annotations__ missing
                 self.__name__ = attributes.name;
                 self.__module__ = attributes.module;
@@ -335,5 +337,120 @@ py = (function () {
         return builtin.type('function', [], dict);
     })();
 
+    builtin.print = console.log;
+    builtin.input=function(msg){ prompt(msg,''); };
+
     return builtin;
+})();
+
+var type=py.type, function_base=py.function_base, iter=py.iter, range=py.range, next=py.next, isinstance=py.isinstance, print=py.print;
+var main=(function(){
+    var main={};
+    var A, B, C;
+    A = (function(){
+        var __dict__={};
+        var foo;
+        foo = (function(){
+            function foo(self){
+
+                print("foo from A")
+            }
+
+            var attributes={
+                name: 'foo',
+                module: 'main',
+                defaults: [],
+                globals: main,
+                kwdefaults: {}
+            }
+
+            return function_base(attributes, foo);
+        })();
+        __dict__.foo = foo;
+        return type('A', [], __dict__);
+    })();
+    B = (function(){
+        var __dict__={};
+        var foo, only_bb;
+        foo = (function(){
+            function foo(self){
+
+                print("foo from B")
+            }
+
+            var attributes={
+                name: 'foo',
+                module: 'main',
+                defaults: [],
+                globals: main,
+                kwdefaults: {}
+            }
+
+            return function_base(attributes, foo);
+        })();
+        only_bb = (function(){
+            function only_bb(self){
+
+                return 1;
+            }
+
+            var attributes={
+                name: 'only_bb',
+                module: 'main',
+                defaults: [],
+                globals: main,
+                kwdefaults: {}
+            }
+
+            return function_base(attributes, only_bb);
+        })();
+        __dict__.foo = foo;
+        __dict__.only_bb = only_bb;
+        return type('B', [], __dict__);
+    })();
+    C = (function(){
+        var __dict__={};
+        var foo, bla;
+        foo = (function(){
+            function foo(self){
+
+                A.foo(self)
+                B.foo(self)
+                print("foo from C")
+            }
+
+            var attributes={
+                name: 'foo',
+                module: 'main',
+                defaults: [],
+                globals: main,
+                kwdefaults: {}
+            }
+
+            return function_base(attributes, foo);
+        })();
+        bla = (function(){
+            function bla(self){
+
+                print("bla from C")
+            }
+
+            var attributes={
+                name: 'bla',
+                module: 'main',
+                defaults: [],
+                globals: main,
+                kwdefaults: {}
+            }
+
+            return function_base(attributes, bla);
+        })();
+        __dict__.foo = foo;
+        __dict__.bla = bla;
+        return type('C', [A, B], __dict__);
+    })();
+    main.A = A;
+    main.B = B;
+    main.C = C;
+    return main;
 })();

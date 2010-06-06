@@ -1,4 +1,10 @@
 
+class Exception:
+    pass
+
+class StopIteration(Exception):
+    pass
+
 class range_iter:
     def __init__(self, start, stop = None, step = 1):
         if not stop:
@@ -28,5 +34,16 @@ class range_iter:
 
         return Iter()
 
-for i in range_iter(5):
-    print(i)
+class A:
+    def foo(self):
+        print('foo from A')
+
+class B:
+    def foo(self):
+        print('foo from B')
+
+def C(A,B):
+    def foo(self):
+        A.foo(self)
+        B.foo(self)
+        print('foo from C')

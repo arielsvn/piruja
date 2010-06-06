@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d753ed98-99ad-4e35-b0ce-de2df02b39ec" name="Default" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/py_builtins.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pyjama.js" afterPath="$PROJECT_DIR$/pyjama.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pyjama.py" afterPath="$PROJECT_DIR$/pyjama.py" />
     </list>
     <ignored path="PyJama.iws" />
@@ -28,7 +31,7 @@
       <file leaf-file-name="pyjama.js" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/pyjama.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="260" column="0" selection-start="8797" selection-end="8797" vertical-scroll-proportion="0.0">
+            <state line="15" column="0" selection-start="372" selection-end="372" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -37,7 +40,18 @@
       <file leaf-file-name="pyjama.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/pyjama.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="314" column="2" selection-start="11124" selection-end="11124" vertical-scroll-proportion="0.3848684">
+            <state line="420" column="0" selection-start="15084" selection-end="15084" vertical-scroll-proportion="0.049132947">
+              <folding>
+                <element signature="e#0#20#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="builtins.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="4582" column="33" selection-start="156840" selection-end="156840" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -46,25 +60,16 @@
       <file leaf-file-name="ast.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://C:/Python30/Lib/ast.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="261" column="30" selection-start="9801" selection-end="9822" vertical-scroll-proportion="0.0">
+            <state line="149" column="0" selection-start="5849" selection-end="5849" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="pyjs.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/pyjs.py">
+      <file leaf-file-name="_pydev_execfile.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="303" column="53" selection-start="9289" selection-end="9289" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="builtins.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="9" column="0" selection-start="221" selection-end="221" vertical-scroll-proportion="0.0">
+            <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -73,7 +78,18 @@
       <file leaf-file-name="main.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="3" column="20" selection-start="54" selection-end="54" vertical-scroll-proportion="0.0">
+            <state line="30" column="0" selection-start="674" selection-end="710" vertical-scroll-proportion="0.0">
+              <folding>
+                <element signature="e#81#246#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="py_builtins.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/py_builtins.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="36" column="0" selection-start="743" selection-end="955" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -82,7 +98,7 @@
       <file leaf-file-name="_ast.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/_ast.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="283" column="6" selection-start="5474" selection-end="5474" vertical-scroll-proportion="0.0">
+            <state line="305" column="0" selection-start="5858" selection-end="5858" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -109,9 +125,10 @@
         <option value="$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/_ast.py" />
         <option value="$PROJECT_DIR$/jinja2/environment.py" />
         <option value="$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py" />
-        <option value="$PROJECT_DIR$/main.py" />
-        <option value="$PROJECT_DIR$/pyjama.js" />
         <option value="C:/Python30/Lib/ast.py" />
+        <option value="$PROJECT_DIR$/main.py" />
+        <option value="$PROJECT_DIR$/py_builtins.py" />
+        <option value="$PROJECT_DIR$/pyjama.js" />
         <option value="$PROJECT_DIR$/pyjama.py" />
       </list>
     </option>
@@ -295,6 +312,9 @@
     </list>
   </component>
   <component name="ShelveChangesManager" show_recycled="false" />
+  <component name="StructureViewFactory">
+    <option name="ACTIVE_ACTIONS" value="SHOW_INHERITED,ALPHA_COMPARATOR" />
+  </component>
   <component name="SvnConfiguration" maxAnnotateRevisions="500">
     <option name="USER" value="" />
     <option name="PASSWORD" value="" />
@@ -345,21 +365,21 @@
     <frame x="-8" y="-8" width="1296" height="772" extended-state="6" />
     <editor active="true" />
     <layout>
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Data Sources" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.49675325" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="true" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26623377" sideWeight="0.55700326" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.5" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26948053" sideWeight="0.62540716" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26948053" sideWeight="0.27361563" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.59934855" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32954547" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.49756494" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.44299674" sideWeight="0.49675325" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.37459284" sideWeight="0.49675325" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -399,7 +419,7 @@
     <option name="INCLUDE_TEXT_INTO_SHELF" value="false" />
     <option name="CREATE_PATCH_EXPAND_DETAILS_DEFAULT" value="true" />
     <option name="FORCE_NON_EMPTY_COMMENT" value="false" />
-    <option name="LAST_COMMIT_MESSAGE" value="changed function template, added function base class" />
+    <option name="LAST_COMMIT_MESSAGE" value="try: except statement" />
     <option name="MAKE_NEW_CHANGELIST_ACTIVE" value="true" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="false" />
     <option name="CHECK_FILES_UP_TO_DATE_BEFORE_COMMIT" value="false" />
@@ -417,21 +437,13 @@
     <MESSAGE value="scopes seems fine" />
     <MESSAGE value="type vs object vs function objects (in JS), working..." />
     <MESSAGE value="changed function template, added function base class" />
+    <MESSAGE value="if + while statements" />
+    <MESSAGE value="try: except statement" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavascriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/ECMAScript.js2">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="47" column="62" selection-start="2057" selection-end="2057" vertical-scroll-proportion="0.6284722" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/test_page.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="5" column="0" selection-start="145" selection-end="145" vertical-scroll-proportion="0.15097691" />
-      </provider>
-    </entry>
     <entry file="file://C:/Python30/include/import.h">
       <provider selected="true" editor-type-id="text-editor">
         <state line="1" column="19" selection-start="20" selection-end="20" vertical-scroll-proportion="0.0" />
@@ -452,11 +464,6 @@
         <state line="33" column="0" selection-start="1435" selection-end="1435" vertical-scroll-proportion="0.7691002" />
       </provider>
     </entry>
-    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.4715026" />
-      </provider>
-    </entry>
     <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/pydevd.py">
       <provider selected="true" editor-type-id="text-editor">
         <state line="1340" column="0" selection-start="55091" selection-end="55091" vertical-scroll-proportion="0.33888888" />
@@ -469,46 +476,75 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="303" column="53" selection-start="9289" selection-end="9289" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="3" column="20" selection-start="54" selection-end="54" vertical-scroll-proportion="0.0" />
+        <state line="405" column="17" selection-start="11504" selection-end="11507" vertical-scroll-proportion="0.3321234">
+          <folding />
+        </state>
       </provider>
     </entry>
     <entry file="file://C:/Python30/Lib/ast.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="261" column="30" selection-start="9801" selection-end="9822" vertical-scroll-proportion="0.0">
+        <state line="149" column="0" selection-start="5849" selection-end="5849" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavascriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/EcmaScript5.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="44" column="7" selection-start="774" selection-end="774" vertical-scroll-proportion="0.3327674">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/_ast.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="283" column="6" selection-start="5474" selection-end="5474" vertical-scroll-proportion="0.0">
+        <state line="305" column="0" selection-start="5858" selection-end="5858" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="0" selection-start="221" selection-end="221" vertical-scroll-proportion="0.0">
+        <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="0" selection-start="674" selection-end="710" vertical-scroll-proportion="0.0">
+          <folding>
+            <element signature="e#81#246#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/py_builtins.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="36" column="0" selection-start="743" selection-end="955" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjama.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="260" column="0" selection-start="8797" selection-end="8797" vertical-scroll-proportion="0.0">
+        <state line="15" column="0" selection-start="372" selection-end="372" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="4582" column="33" selection-start="156840" selection-end="156840" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjama.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="314" column="2" selection-start="11124" selection-end="11124" vertical-scroll-proportion="0.3848684">
-          <folding />
+        <state line="420" column="0" selection-start="15084" selection-end="15084" vertical-scroll-proportion="0.049132947">
+          <folding>
+            <element signature="e#0#20#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

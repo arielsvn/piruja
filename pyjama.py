@@ -41,7 +41,7 @@ def concat(separator):
     return decorator
 
 class JCompiler:
-    builtins=['type','function_base']
+    builtins=['type','function_base', 'iter', 'range', 'next', 'isinstance', 'print']
 
     def import_builtins(self):
         namespace='py'
@@ -115,7 +115,11 @@ class JCompiler:
                 return self.check(node, node.names[0].name)
 
         tree=ast.parse(code)
-        return Transformer().visit(tree).body[0]
+        members = Transformer().visit(tree).body
+        if len(members)==1:
+            return members[0]
+        else:
+            return members
 
     def visit_FunctionDef(self, node, scope):
         # FunctionDef(identifier name, arguments args,
@@ -134,12 +138,12 @@ class JCompiler:
     }
 
     var attributes={
-        name = '%(name)s',
-        module = '%(module_name)s',
-        defaults = [%(defaults)s],
-        globals = %(module_name)s,
-        kwdefaults = {}
-    }
+        name: '%(name)s',
+        module: '%(module_name)s',
+        defaults: [%(defaults)s],
+        globals: %(module_name)s,
+        kwdefaults: {}
+    };
 
     return function_base(attributes, %(name)s);
 })();"""
@@ -263,11 +267,36 @@ var %(name)s=(function(){
             ), node)
             return self.visit(transformed, scope)
 
+    def visit_For(self, node, scope):
+        # For(expr target, expr iter, stmt* body, stmt* orelse)
+        code=\
+"""temp_store = iter(iterable)
+while True:
+    try:
+        target=next(temp_load)
+        import body
+    except StopIteration:
+        import orelse
+        break
+"""
+        temp_iterable = '$i'
+        template = JCompiler.build_ast(code,
+            temp_store = ast.Name(id=temp_iterable, ctx=ast.Store()),
+            temp_load = ast.Name(id=temp_iterable, ctx = ast.Load()),
+            iterable = node.iter,
+            target = node.target,
+            body = node.body,
+            orelse=node.orelse
+        )
+        return self.generic_visit_list(template, scope)
+
     def visit_TryExcept(self, node, scope):
         # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
         # excepthandler = ExceptHandler(expr? type, identifier? name, stmt* body)
 
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
+
+        # TODO: Else clause missing
 
         def map_handler(handlers):
             # maps a catch block into the corresponding if
@@ -282,31 +311,42 @@ var %(name)s=(function(){
             code+='if isinstance(temp, exception): ' if first.type else ''
             code+='var = temp; ' if first.name else ''
             code+='import body; '
-            code+='else: import orelse; ' if len(handlers)>1 else ''
+            code+='\nelse: import orelse; ' if len(handlers)>1 else ''
 
             return JCompiler.build_ast(code,
-                temp=ast.Name(id='e$', ctx=ast.Load),
+                temp=ast.Name(id='e$', ctx=ast.Load()),
                 exception = first.type,
-                var = ast.Name(id=first.name, ctx=ast.Store),
+                var = ast.Name(id=first.name, ctx=ast.Store()),
                 body = first.body,
                 orelse = map_handler(handlers[1:])
             )
 
         condition= map_handler(node.handlers)
-        body = self.generic_visit_list(node.body, scope)
-        catch = self.visit(condition, scope)
-        return 'try { \n%(body)s \n} catch (e$) { \n%(catch)s \n}' \
-                    % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope)),
-                       'catch': JCompiler.indent(self.visit(condition, scope))}
+        result='try { \n%(body)s \n}' % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope))}
+        if node.handlers:
+            result += ' catch (e$) { \n%(catch)s \n}' % {'catch': JCompiler.indent(self.visit(condition, scope))}
+        return result
+
+    def visit_TryFinally(self, node, scope):
+        # TryFinally(stmt* body, stmt* finalbody)
+        if len(node.body)==1 and isinstance(node.body[0], ast.TryExcept):
+            return '%(try)s finally { \n%(body)s \n}' \
+                    % {'try': self.visit(node.body[0], scope),
+                       'body': JCompiler.indent(self.generic_visit_list(node.finalbody, scope))}
+        else:
+            template='try { \n%(body)s \n} finally { \n%(finalbody)s \n}'
+            return template % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope)),
+                               'finalbody': JCompiler.indent(self.generic_visit_list(node.finalbody, scope))}
+
+    def visit_Raise(self, node, scope):
+
+        pass
 
     def visit_Num(self, node, scope):
         return str(node.n)
 
     def visit_Not(self, node, scope):
         return "!" + self.visit(node.expr, scope)
-
-    def visit_Pass(self, node, scope):
-        return ''
 
     def visit_Break(self, node, scope):
         return 'break'
@@ -331,11 +371,20 @@ var %(name)s=(function(){
         '-' if isinstance(node.op,ast.Sub) else \
         '*' if isinstance(node.op,ast.Mult) else \
         '/' if isinstance(node.op,ast.Div) else \
-        '|' if isinstance(node.op, ast.Or) else None
+        '|' if isinstance(node.op, ast.Or) else \
+        None
 
         left=self.visit(node.left, scope)
         right=self.visit(node.right, scope)
         return '%(left)s %(operator)s %(right)s' % {'left': left, 'operator': op, 'right': right}
+
+    def visit_UnaryOp(self, node, scope):
+        # UnaryOp(unaryop op, expr operand)
+        # unaryop = Invert | Not | UAdd | USub
+
+        if isinstance(node.op, ast.Not):
+            return '!' + self.visit(node.operand, scope)
+        raise NotImplementedError
 
     def visit_Call(self, node, scope):
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
@@ -360,6 +409,8 @@ var %(name)s=(function(){
             return 'true'
         elif name=='False':
             return 'false'
+        elif name=='None':
+            return 'undefined'
         else:
             if isinstance(node.ctx, ast.Store): scope.define(name)
 
@@ -367,11 +418,27 @@ var %(name)s=(function(){
 
 js=JCompiler()
 code="""
-try:
-    foo()
-except Exception as e:
-    print(123)
+class A:
+    def foo(self):
+        print('foo from A')
+
+class B:
+    def foo(self):
+        print('foo from B')
+
+    def only_bb(self): return 1
+
+class C(A,B):
+    def foo(self):
+        A.foo(self)
+        B.foo(self)
+        print('foo from C')
+
+    def bla(self):
+        print('bla from C')
 """
 
 program=compile(code)
 print(program)
+
+
