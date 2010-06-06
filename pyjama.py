@@ -98,6 +98,25 @@ class JCompiler:
         return '\n'.join('%(module)s.%(var)s = %(var)s;' % {'module': module_name, 'var': var}
             for var in scope.vars) if scope.vars else ''
 
+    @staticmethod
+    def build_ast(code, **kwnodes):
+        class Transformer(ast.NodeTransformer):
+            def check(self, node, name):
+                # Name(identifier id, expr_context ctx)
+                if name in kwnodes:
+                    return kwnodes[name]
+                else:
+                    return node
+
+            def visit_Name(self, node):
+                return self.check(node, node.id)
+
+            def visit_Import(self, node):
+                return self.check(node, node.names[0].name)
+
+        tree=ast.parse(code)
+        return Transformer().visit(tree).body[0]
+
     def visit_FunctionDef(self, node, scope):
         # FunctionDef(identifier name, arguments args,
         #   stmt* body, expr* decorator_list, expr? returns)
@@ -244,6 +263,42 @@ var %(name)s=(function(){
             ), node)
             return self.visit(transformed, scope)
 
+    def visit_TryExcept(self, node, scope):
+        # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
+        # excepthandler = ExceptHandler(expr? type, identifier? name, stmt* body)
+
+        # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
+
+        def map_handler(handlers):
+            # maps a catch block into the corresponding if
+
+            # catch <Exception> <e>: <body>
+            # into -->
+            # if (isinstance(e$, <Exception>)): e=e$; <body>
+            if not handlers: return ast.Pass
+
+            first= handlers[0]
+            code=''
+            code+='if isinstance(temp, exception): ' if first.type else ''
+            code+='var = temp; ' if first.name else ''
+            code+='import body; '
+            code+='else: import orelse; ' if len(handlers)>1 else ''
+
+            return JCompiler.build_ast(code,
+                temp=ast.Name(id='e$', ctx=ast.Load),
+                exception = first.type,
+                var = ast.Name(id=first.name, ctx=ast.Store),
+                body = first.body,
+                orelse = map_handler(handlers[1:])
+            )
+
+        condition= map_handler(node.handlers)
+        body = self.generic_visit_list(node.body, scope)
+        catch = self.visit(condition, scope)
+        return 'try { \n%(body)s \n} catch (e$) { \n%(catch)s \n}' \
+                    % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope)),
+                       'catch': JCompiler.indent(self.visit(condition, scope))}
+
     def visit_Num(self, node, scope):
         return str(node.n)
 
@@ -312,12 +367,11 @@ var %(name)s=(function(){
 
 js=JCompiler()
 code="""
-while 1+1:
-    if 2+2:
-        break
-    else: continue
-    print (1)
+try:
+    foo()
+except Exception as e:
+    print(123)
 """
-iter
+
 program=compile(code)
 print(program)

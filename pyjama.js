@@ -2,9 +2,59 @@ var py;
 py = (function () {
     var builtin = {};
 
-    function isinstance(item, classinfo) {
-        return item.__class__ === classinfo;
-    }
+    (function (){
+        // prepare arrays to behave like python lists
+
+        // Called to implement the built-in function len().
+        Array.prototype.__len__ = function(){return this.length;};
+    })();
+
+    var len;
+    len = builtin.len = function(seq){
+        if (seq.__len__)
+            return seq.__len__;
+        throw 'object has no length'
+    };
+
+    var issubclass;
+    issubclass = builtin.issubclass = function (C, B){
+        // issubclass(C, B) -> bool
+
+        // Return whether class C is a subclass (i.e., a derived class) of class B.
+        // When using a tuple as the second argument issubclass(X, (A, B, ...)),
+        // is a shortcut for issubclass(X, A) or issubclass(X, B) or ... (etc.).
+        if (B===builtin.object || C==B)
+            return true;
+        else if (!builtin.issubclass(C.__class__, builtin.type) || !builtin.issubclass(B.__class__, builtin.type)){
+            throw 'C and B must be types.'
+        }
+        else{
+            for (var i=0; i<len(C.__bases__); i++){
+                if (builtin.issubclass(C.__bases__[i], B))
+                    return true;
+            }
+            return false;
+        }
+    };
+
+    var isinstance;
+    isinstance=builtin.isinstance = function (item, classinfo) {
+        if (item.__class__)
+            return issubclass(item.__class__, classinfo);
+        else return false;
+    };
+
+    var iter;
+    iter = builtin.iter = function(source, sentinel){
+        // iter(iterable) -> iterator
+        // iter(callable, sentinel) -> iterator
+
+        // Get an iterator from an object.  In the first form, the argument must
+        // supply its own iterator, or be a sequence.
+        // In the second form, the callable is called until it returns the sentinel.
+
+        return source.__iter__();
+    };
 
     builtin.staticmethod = function (func) {
         function wrapper() {
@@ -213,6 +263,7 @@ py = (function () {
         }
 
         type.__bases__= [];
+        type.__class__ = type;
         extend(type, builtin.object);
 
         type.__call__ = function(name, bases, dict){
@@ -285,26 +336,4 @@ py = (function () {
     })();
 
     return builtin;
-})();
-
-var type=py.type, function_base=py.function_base;
-var main=(function(){
-    var main={};
-    var A;
-    A = (function(){
-        var __dict__={};
-        var __call__;
-        __call__ = (function(){
-            function __call__(self, x){
-
-                console.log(x);
-            }
-
-            return function_base(__call__);
-        })();
-        __dict__.__call__ = __call__;
-        return type('A', [], __dict__);
-    })();
-    main.A = A;
-    return main;
 })();
