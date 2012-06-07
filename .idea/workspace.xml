@@ -2,9 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d753ed98-99ad-4e35-b0ce-de2df02b39ec" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/py_builtins.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/py_builtins.py" afterPath="$PROJECT_DIR$/py_builtins.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pyjama.js" afterPath="$PROJECT_DIR$/pyjama.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pyjama.py" afterPath="$PROJECT_DIR$/pyjama.py" />
     </list>
@@ -31,8 +31,12 @@
       <file leaf-file-name="pyjama.js" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/pyjama.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="15" column="0" selection-start="372" selection-end="372" vertical-scroll-proportion="0.0">
-              <folding />
+            <state line="314" column="0" selection-start="10846" selection-end="10846" vertical-scroll-proportion="0.0">
+              <folding>
+                <element signature="e#9266#10844#0" expanded="false" />
+                <element signature="e#12513#13127#0" expanded="false" />
+                <element signature="e#13161#13312#0" expanded="false" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -40,9 +44,33 @@
       <file leaf-file-name="pyjama.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/pyjama.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="420" column="0" selection-start="15084" selection-end="15084" vertical-scroll-proportion="0.049132947">
+            <state line="455" column="0" selection-start="17365" selection-end="17674" vertical-scroll-proportion="0.5572917">
               <folding>
-                <element signature="e#0#20#0" expanded="true" />
+                <element signature="e#112#409#0" expanded="false" />
+                <element signature="e#447#565#0" expanded="false" />
+                <element signature="e#609#682#0" expanded="false" />
+                <element signature="e#720#744#0" expanded="false" />
+                <element signature="e#774#869#0" expanded="false" />
+                <element signature="e#895#917#0" expanded="false" />
+                <element signature="e#960#1068#0" expanded="false" />
+                <element signature="e#1640#1651#0" expanded="false" />
+                <element signature="e#1800#1861#0" expanded="false" />
+                <element signature="e#4480#4631#0" expanded="false" />
+                <element signature="e#4710#4853#0" expanded="false" />
+                <element signature="e#5242#5274#0" expanded="false" />
+                <element signature="e#5334#5377#0" expanded="false" />
+                <element signature="e#6900#6961#0" expanded="false" />
+                <element signature="e#9133#9148#0" expanded="false" />
+                <element signature="e#10057#10195#0" expanded="false" />
+                <element signature="e#10246#10460#0" expanded="false" />
+                <element signature="e#16039#16057#0" expanded="false" />
+                <element signature="e#16107#16122#0" expanded="false" />
+                <element signature="e#16175#16193#0" expanded="false" />
+                <element signature="e#17437#17673#0" expanded="false" />
+                <element signature="e#17744#18051#0" expanded="false" />
+                <element signature="e#18121#18169#0" expanded="false" />
+                <element signature="e#18245#18418#0" expanded="false" />
+                <element signature="e#18489#19034#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -51,7 +79,7 @@
       <file leaf-file-name="builtins.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="4582" column="33" selection-start="156840" selection-end="156840" vertical-scroll-proportion="0.0">
+            <state line="2358" column="0" selection-start="78799" selection-end="78799" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -60,16 +88,7 @@
       <file leaf-file-name="ast.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://C:/Python30/Lib/ast.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="149" column="0" selection-start="5849" selection-end="5849" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="_pydev_execfile.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.0">
+            <state line="155" column="0" selection-start="5999" selection-end="5999" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -78,10 +97,8 @@
       <file leaf-file-name="main.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="30" column="0" selection-start="674" selection-end="710" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#81#246#0" expanded="false" />
-              </folding>
+            <state line="9" column="12" selection-start="108" selection-end="108" vertical-scroll-proportion="0.0">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -89,7 +106,7 @@
       <file leaf-file-name="py_builtins.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/py_builtins.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="36" column="0" selection-start="743" selection-end="955" vertical-scroll-proportion="0.0">
+            <state line="5" column="8" selection-start="68" selection-end="68" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -126,9 +143,9 @@
         <option value="$PROJECT_DIR$/jinja2/environment.py" />
         <option value="$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py" />
         <option value="C:/Python30/Lib/ast.py" />
-        <option value="$PROJECT_DIR$/main.py" />
         <option value="$PROJECT_DIR$/py_builtins.py" />
         <option value="$PROJECT_DIR$/pyjama.js" />
+        <option value="$PROJECT_DIR$/main.py" />
         <option value="$PROJECT_DIR$/pyjama.py" />
       </list>
     </option>
@@ -313,6 +330,7 @@
   </component>
   <component name="ShelveChangesManager" show_recycled="false" />
   <component name="StructureViewFactory">
+    <option name="AUTOSCROLL_FROM_SOURCE" value="true" />
     <option name="ACTIVE_ACTIONS" value="SHOW_INHERITED,ALPHA_COMPARATOR" />
   </component>
   <component name="SvnConfiguration" maxAnnotateRevisions="500">
@@ -347,12 +365,14 @@
       <are-modules-shown value="false" />
       <flatten-packages value="false" />
       <is-autoscroll-to-source value="false" />
+      <is-preview-enabled value="true" />
     </todo-panel>
     <todo-panel id="all">
       <are-packages-shown value="false" />
       <are-modules-shown value="false" />
       <flatten-packages value="false" />
       <is-autoscroll-to-source value="false" />
+      <is-preview-enabled value="true" />
     </todo-panel>
     <todo-panel id="default-changelist">
       <are-packages-shown value="false" />
@@ -365,21 +385,21 @@
     <frame x="-8" y="-8" width="1296" height="772" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Data Sources" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.49675325" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26948053" sideWeight="0.62540716" order="1" side_tool="true" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26948053" sideWeight="0.27361563" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26948053" sideWeight="0.25407165" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.19642857" sideWeight="0.4315961" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.59934855" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32954547" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.49756494" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.37459284" sideWeight="0.49675325" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.74592835" sideWeight="0.49675325" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -419,7 +439,7 @@
     <option name="INCLUDE_TEXT_INTO_SHELF" value="false" />
     <option name="CREATE_PATCH_EXPAND_DETAILS_DEFAULT" value="true" />
     <option name="FORCE_NON_EMPTY_COMMENT" value="false" />
-    <option name="LAST_COMMIT_MESSAGE" value="try: except statement" />
+    <option name="LAST_COMMIT_MESSAGE" value="going to school" />
     <option name="MAKE_NEW_CHANGELIST_ACTIVE" value="true" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="false" />
     <option name="CHECK_FILES_UP_TO_DATE_BEFORE_COMMIT" value="false" />
@@ -439,31 +459,12 @@
     <MESSAGE value="changed function template, added function base class" />
     <MESSAGE value="if + while statements" />
     <MESSAGE value="try: except statement" />
+    <MESSAGE value="going to school" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://C:/Python30/include/import.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="19" selection-start="20" selection-end="20" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://C:/Python30/include/Python.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="11" column="0" selection-start="259" selection-end="259" vertical-scroll-proportion="-3.4657292" />
-      </provider>
-    </entry>
-    <entry file="file://C:/Python30/Lib/functools.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="0" selection-start="396" selection-end="396" vertical-scroll-proportion="-0.3565365" />
-      </provider>
-    </entry>
-    <entry file="file://C:/Python30/include/funcobject.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="33" column="0" selection-start="1435" selection-end="1435" vertical-scroll-proportion="0.7691002" />
-      </provider>
-    </entry>
     <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/pydevd.py">
       <provider selected="true" editor-type-id="text-editor">
         <state line="1340" column="0" selection-start="55091" selection-end="55091" vertical-scroll-proportion="0.33888888" />
@@ -476,74 +477,124 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="405" column="17" selection-start="11504" selection-end="11507" vertical-scroll-proportion="0.3321234">
+        <state line="405" column="17" selection-start="11504" selection-end="11507" vertical-scroll-proportion="0.3321234" />
+      </provider>
+    </entry>
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.82682514" />
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/_ast.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="305" column="0" selection-start="5858" selection-end="5858" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="2358" column="0" selection-start="78799" selection-end="78799" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python30/Lib/ast.py">
+    <entry file="file://C:/Python30/Lib/site-packages/README.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="149" column="0" selection-start="5849" selection-end="5849" vertical-scroll-proportion="0.0">
+        <state line="2" column="0" selection-start="119" selection-end="119" vertical-scroll-proportion="0.057724956">
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Python30/Lib/copy.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="259" column="17" selection-start="6965" selection-end="6965" vertical-scroll-proportion="-462.0">
+          <folding>
+            <element signature="e#1749#1761#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavascriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/EcmaScript5.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="44" column="7" selection-start="774" selection-end="774" vertical-scroll-proportion="0.3327674">
+        <state line="18" column="20" selection-start="334" selection-end="338" vertical-scroll-proportion="-3.5413005">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/_ast.py">
+    <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavascriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/HTML5.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="305" column="0" selection-start="5858" selection-end="5858" vertical-scroll-proportion="0.0">
+        <state line="120" column="3" selection-start="1943" selection-end="1943" vertical-scroll-proportion="0.18277681">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_execfile.py">
+    <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavascriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/ECMAScript.js2">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="36" column="0" selection-start="1164" selection-end="1164" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="30" column="0" selection-start="674" selection-end="710" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#81#246#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/py_builtins.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="36" column="0" selection-start="743" selection-end="955" vertical-scroll-proportion="0.0">
+        <state line="35" column="21" selection-start="1492" selection-end="1492" vertical-scroll-proportion="0.33333334">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjama.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="15" column="0" selection-start="372" selection-end="372" vertical-scroll-proportion="0.0">
+        <state line="314" column="0" selection-start="10846" selection-end="10846" vertical-scroll-proportion="0.0">
+          <folding>
+            <element signature="e#9266#10844#0" expanded="false" />
+            <element signature="e#12513#13127#0" expanded="false" />
+            <element signature="e#13161#13312#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/py_builtins.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="5" column="8" selection-start="68" selection-end="68" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharm20/system/python_stubs/-1959156802/builtins.py">
+    <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="4582" column="33" selection-start="156840" selection-end="156840" vertical-scroll-proportion="0.0">
+        <state line="9" column="12" selection-start="108" selection-end="108" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Python30/Lib/ast.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="155" column="0" selection-start="5999" selection-end="5999" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pyjama.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="420" column="0" selection-start="15084" selection-end="15084" vertical-scroll-proportion="0.049132947">
+        <state line="455" column="0" selection-start="17365" selection-end="17674" vertical-scroll-proportion="0.5572917">
           <folding>
-            <element signature="e#0#20#0" expanded="true" />
+            <element signature="e#112#409#0" expanded="false" />
+            <element signature="e#447#565#0" expanded="false" />
+            <element signature="e#609#682#0" expanded="false" />
+            <element signature="e#720#744#0" expanded="false" />
+            <element signature="e#774#869#0" expanded="false" />
+            <element signature="e#895#917#0" expanded="false" />
+            <element signature="e#960#1068#0" expanded="false" />
+            <element signature="e#1640#1651#0" expanded="false" />
+            <element signature="e#1800#1861#0" expanded="false" />
+            <element signature="e#4480#4631#0" expanded="false" />
+            <element signature="e#4710#4853#0" expanded="false" />
+            <element signature="e#5242#5274#0" expanded="false" />
+            <element signature="e#5334#5377#0" expanded="false" />
+            <element signature="e#6900#6961#0" expanded="false" />
+            <element signature="e#9133#9148#0" expanded="false" />
+            <element signature="e#10057#10195#0" expanded="false" />
+            <element signature="e#10246#10460#0" expanded="false" />
+            <element signature="e#16039#16057#0" expanded="false" />
+            <element signature="e#16107#16122#0" expanded="false" />
+            <element signature="e#16175#16193#0" expanded="false" />
+            <element signature="e#17437#17673#0" expanded="false" />
+            <element signature="e#17744#18051#0" expanded="false" />
+            <element signature="e#18121#18169#0" expanded="false" />
+            <element signature="e#18245#18418#0" expanded="false" />
+            <element signature="e#18489#19034#0" expanded="false" />
           </folding>
         </state>
       </provider>

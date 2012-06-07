@@ -2,11 +2,10 @@
 class A:
     pass
 
-class B(A):
-    pass
+def bla(x, **kwargs):
+    print(x)
+    print(kwargs)
 
-A.foo=lambda self:4
-
-b=B()
-
-print(b.foo())
+dd={'1':'2', '3':'4'}
+for k in dd:
+    print(k)

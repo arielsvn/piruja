@@ -240,6 +240,7 @@ py = (function () {
             throw new AttributeError(object, name);
         };
         object.__getattr__ = function (self, name) {
+            // TODO if the object doesn't contain the method then search it in the tree
             return self[name];
         };
         object.__delattr__ = function (self, name) {
@@ -256,7 +257,8 @@ py = (function () {
         return object;
     })();
 
-    builtin.type = (function () {
+    var type;
+    type = builtin.type = (function () {
         // type(object) -> the object's type
         // type(name, bases, dict) -> a new type
         function type(name, bases, dict) {
@@ -276,6 +278,10 @@ py = (function () {
                     var instance = Class.__new__.apply(Class, append(Class, arguments));
 
                     instance.__class__ = Class;
+
+                    // members bound to it's instance should be of type method,
+                    // but that could depend on the implementation, because
+                    // the type method isn't part of the python builtins
                     bound_members(instance, Class, no_instance_members);
 
                     instance.__init__.apply(instance, arguments);
@@ -321,6 +327,19 @@ py = (function () {
                 // TODO: process arguments here... (defaults, varargs, kwargs, etc...)
                 var args=Array.apply(this, arguments).slice(1);
 
+//                // get specific intepreter data about this function
+//                var data=self.__$data__;
+//                var length= data.parameter_count;
+//                if (data.starargs) length+=1;
+//                if (data.kwargs) length+=1;
+//
+//                if (length<len(arguments)) throw 'invalid parameters';
+//
+//                var result=new Array(length);
+//                for (var i=0; i<data.parameter_count; i++)
+//                    // skip the first argument because it's the function itself
+//                    result[i]=arguments[i+1];
+
                 return self.__code__.apply(this, args);
             },
             __init__: function(self, attributes, code) {
@@ -335,6 +354,35 @@ py = (function () {
         };
 
         return builtin.type('function', [], dict);
+    })();
+
+    builtin.method=(function(){
+        // represents bound methods
+
+        var dict={
+            __call__: function(self){
+                // TODO: process arguments here... (defaults, varargs, kwargs, etc...)
+                // skip the first argument because it's the function itself
+                var args=Array.apply(this, arguments).slice(1);
+
+
+                return self.__code__.apply(this, args);
+            },
+            __init__: function(self, attributes, code) {
+                // Note: __doc__, __dict__, __closure__, __annotations__ missing
+            }
+        };
+
+        return builtin.type('method', [], dict);
+    })();
+
+    builtin.dict=(function(){
+        // todo implement dict in JS, possibly using the compiler itself
+        var dict={
+
+        };
+
+        return type('dict', [], dict);
     })();
 
     builtin.print = console.log;

@@ -1,11 +1,16 @@
 from _ast import AST
 import ast
-x=object
 
 class BaseScope:
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, semi_after=None):
         self.vars=[]
         self.parent=parent
+
+        # in a statement, semi_after returns true if the statement should terminated with a semicolon ';'
+        if semi_after == None:
+            self.semi_after=parent.semi_after if parent else False
+        else:
+            self.semi_after=semi_after
 
     def define(self, name):
         # reports the existence of a new variable in the scope
@@ -23,7 +28,29 @@ class BaseScope:
         else:
             return self.parent.root()
 
-    def __iter__(self): return self.vars.__iter__()
+    def __iter__(self): return iter(self.vars)
+
+    def __getattr__(self, name):
+        if self.parent:
+            return getattr(self.parent, name)
+        else:
+            raise AttributeError
+
+class PhantomScope(BaseScope):
+    def __init__(self, parent, semi_after=None, **kwfields):
+        super().__init__(parent, semi_after)
+
+        self.extra_fields=dict(kwfields)
+
+    def define(self, name): self.parent.define(name)
+
+    def __iter__(self): return iter(self.parent)
+
+    def __getattr__(self, name):
+        if name in self.extra_fields:
+            return self.extra_fields[name]
+        else:
+            return getattr(self.parent, name)
 
 def compile(program):
     compiler=JCompiler()
@@ -31,7 +58,7 @@ def compile(program):
 
     class ProgramScope(BaseScope): name='main'
 
-    return compiler.visit(tree,  ProgramScope())
+    return compiler.visit(tree, ProgramScope())
 
 def concat(separator):
     def decorator(func):
@@ -39,6 +66,14 @@ def concat(separator):
             return separator.join(item for item in func(*args, **kwargs))
         return wrapper
     return decorator
+
+def check_semi_after(func):
+    # decorator that checks if the statement must be followed by a semicolon
+    # and adds it automatically if needed
+    # it should be used only on the JCompiler.visit_* methods...
+    def wrapper(self, node, scope):
+        return func(self, node, scope) + (';' if scope.semi_after else '')
+    return wrapper
 
 class JCompiler:
     builtins=['type','function_base', 'iter', 'range', 'next', 'isinstance', 'print']
@@ -83,10 +118,18 @@ class JCompiler:
             return JCompiler.indent(indented, times-1)
 
     def code_block(self, stmt_list, scope):
+        # adds brackets (and indent) a code block if more than one statement
+        # also ensures that all statements are terminated with semicolons
         if len(stmt_list)>1:
-            return '{ \n%s \n}' %  JCompiler.indent(self.generic_visit_list(stmt_list, scope))
+            return '{ \n%s \n}' %  JCompiler.indent(self.visit_stmt_list(stmt_list, scope))
         else:
             return self.visit(stmt_list[0], scope)
+
+    @concat('\n')
+    def visit_stmt_list(self, stmt_list,scope):
+        for item in stmt_list:
+            # each statement must be terminated with a semicolon ';'
+            yield self.visit(item, PhantomScope(scope, True))
 
     @staticmethod
     def scope_vars_declaration(scope):
@@ -136,16 +179,14 @@ class JCompiler:
         %(vars)s
 %(code)s
     }
-
-    var attributes={
+    var $attributes={
         name: '%(name)s',
         module: '%(module_name)s',
         defaults: [%(defaults)s],
         globals: %(module_name)s,
         kwdefaults: {}
     };
-
-    return function_base(attributes, %(name)s);
+    return function_base($attributes, %(name)s);
 })();"""
 
         arguments = [str(arg.arg) for arg in node.args.args]
@@ -154,7 +195,7 @@ class JCompiler:
         if node.args.kwarg:
             arguments+=[node.args.kwarg]
 
-        defaults = ', '.join(self.visit(expr,scope) for expr in node.args.defaults)
+        defaults = ', '.join(self.visit(expr, BaseScope(scope, False)) for expr in node.args.defaults)
 
         class FunctionScope(BaseScope):
             def __init__(self, parent=None):
@@ -167,8 +208,10 @@ class JCompiler:
 
         name=str(node.name)
         function_scope = FunctionScope(scope)
+
         body=self.generic_visit_list(node.body, function_scope)
-        vars= JCompiler.scope_vars_declaration(function_scope)
+        # at the top of the function all local vars are declared
+        vars = JCompiler.scope_vars_declaration(function_scope)
         scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body,2),
                            'arguments': ', '.join(arguments), 'vars': vars,
@@ -177,30 +220,36 @@ class JCompiler:
     def visit_ClassDef(self, node, scope):
         # ClassDef(identifier name, expr* bases, keyword* keywords, expr? starargs,
         #       expr? kwargs, stmt* body, expr *decorator_list)
+        dict_name='__$dict__'
         template=\
 """%(name)s = (function(){
-    var __dict__={};
+    var %(dict_name)s={};
     %(vars)s
 %(code)s
 %(fields)s
-    return type('%(name)s', [%(bases)s], __dict__);
+    return type('%(name)s', [%(bases)s], %(dict_name)s);
 })();"""
 
-        class_scope=BaseScope(scope)
         # 1. It first evaluates the inheritance list
-        bases=', '.join(self.visit(base, scope) for base in node.bases) # the bases use the parent scope
-        # 2. The class’s suite is then executed in a new execution frame
-        body = self.generic_visit_list(node.body, class_scope)
-        name = str(node.name)
-        vars=JCompiler.scope_vars_declaration(class_scope)
-        fields=JCompiler.scope_vars_assignment(class_scope, '__dict__')
+        bases=', '.join(self.visit(base, BaseScope(scope, False)) for base in node.bases) # the bases use the parent scope
 
+        # 2. The class’s suite is then executed in a new execution frame
+        name = str(node.name)
+        class_scope=BaseScope(scope, semi_after=True)
+        body = self.generic_visit_list(node.body, class_scope)
+        # at the top of the function all local vars are declared
+        vars=JCompiler.scope_vars_declaration(class_scope)
+        # and then at the bottom those vars are assigned to the current __dict__
+        fields=JCompiler.scope_vars_assignment(class_scope, dict_name)
+
+        # define the current class as a var in the parent scope
         scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body),
                            'vars': vars, 'fields': JCompiler.indent(fields),
-                           'bases': bases}
+                           'bases': bases, 'dict_name': dict_name}
 
     def visit_Module(self, node, scope):
+        # Module(stmt* body)
         module=\
 """%(builtins)s
 var %(name)s=(function(){
@@ -228,17 +277,18 @@ var %(name)s=(function(){
     def visit_Return(self, node, scope):
         # Return(expr? value)
         if node.value:
-            return 'return %s;' % self.visit(node.value, scope)
+            return 'return %s;' % self.visit(node.value, PhantomScope(scope, False))
         else:
             return 'return;'
 
     def visit_Delete(self, node, scope):
         # Delete(expr* targets)
-        return '\n'.join('%s = undefined;' % self.visit(expr,scope) for expr in node.targets)
+        return '\n'.join('%s = undefined;' % self.visit(expr, PhantomScope(scope,False)) for expr in node.targets)
 
     def visit_Assign(self, node, scope):
         # Assign(expr* targets, expr value)
-        return ' = '.join(self.visit(expr, scope) for expr in node.targets) + ' = ' + self.visit(node.value, scope) + ';'
+        return ' = '.join(self.visit(expr, PhantomScope(scope,False)) for expr in node.targets) \
+               + ' = ' + self.visit(node.value, PhantomScope(scope,False)) + ';'
 
     def visit_If(self, node, scope):
         # If(expr test, stmt* body, stmt* orelse)
@@ -246,29 +296,36 @@ var %(name)s=(function(){
 """if (%(test)s) %(body)s
 %(extra)s"""
 
-        return template % {'test': self.visit(node.test, scope),
-                           'body': self.code_block(node.body, scope),
-                           'extra': ('else %s' % self.code_block(node.orelse, scope)) if node.orelse else ''}
+        return template % {'test': self.visit(node.test, PhantomScope(scope,False)),
+                           'body': self.code_block(node.body, PhantomScope(scope,True)),
+                           'extra': ('else %s' % self.code_block(node.orelse, PhantomScope(scope,True))) if node.orelse else ''}
 
     def visit_While(self, node, scope):
         # While(expr test, stmt* body, stmt* orelse)
         if not node.orelse:
             template="while (%(test)s) %(body)s"
-            return template % {'test': self.visit(node.test, scope), 'body': self.code_block(node.body, scope)}
+            return template % {'test': self.visit(node.test, PhantomScope(scope,False)),
+                               'body': self.code_block(node.body, PhantomScope(scope,True))}
         else:
-            transformed= ast.copy_location(ast.While(
-                test=ast.Name(id='True'),
-                body=[ast.If(
-                    test=node.test,
-                    body=node.body,
-                    orelse=node.orelse + [ast.Break()]
-                )],
-                orelse=[]
-            ), node)
+            # rewrite the expression
+            code="""
+            while True:
+                if test:
+                    import body
+                else:
+                    import orelse
+                    break
+            """
+            transformed = JCompiler.build_ast(code,
+                test = node.test,
+                body = node.body,
+                orelse = node.orelse
+            )
             return self.visit(transformed, scope)
 
     def visit_For(self, node, scope):
         # For(expr target, expr iter, stmt* body, stmt* orelse)
+        # the for statement is rewritten as follows
         code=\
 """temp_store = iter(iterable)
 while True:
@@ -279,7 +336,8 @@ while True:
         import orelse
         break
 """
-        temp_iterable = '$i'
+        temp_iterable = JCompiler.inc_temp_var(getattr(scope, 'temp_iterable','$i'))
+        for_scope= PhantomScope(scope, True, temp_iterable=temp_iterable)
         template = JCompiler.build_ast(code,
             temp_store = ast.Name(id=temp_iterable, ctx=ast.Store()),
             temp_load = ast.Name(id=temp_iterable, ctx = ast.Load()),
@@ -288,7 +346,13 @@ while True:
             body = node.body,
             orelse=node.orelse
         )
-        return self.generic_visit_list(template, scope)
+        return self.generic_visit_list(template, for_scope)
+
+    @staticmethod
+    def inc_temp_var(var_name):
+        # returns another unique variable name following a pattern from var_name
+        # change this if you want to optimize variable names for nested blocks of the same type
+        return var_name + '_'
 
     def visit_TryExcept(self, node, scope):
         # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
@@ -297,6 +361,9 @@ while True:
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
 
         # TODO: Else clause missing
+
+        catch_variable_name= JCompiler.inc_temp_var(getattr(scope, 'catch_variable_name', '$e'))
+        catch_scope = PhantomScope(scope, True, catch_variable_name=catch_variable_name)
 
         def map_handler(handlers):
             # maps a catch block into the corresponding if
@@ -314,7 +381,7 @@ while True:
             code+='\nelse: import orelse; ' if len(handlers)>1 else ''
 
             return JCompiler.build_ast(code,
-                temp=ast.Name(id='e$', ctx=ast.Load()),
+                temp=ast.Name(id=catch_variable_name, ctx=ast.Load()),
                 exception = first.type,
                 var = ast.Name(id=first.name, ctx=ast.Store()),
                 body = first.body,
@@ -322,45 +389,53 @@ while True:
             )
 
         condition= map_handler(node.handlers)
-        result='try { \n%(body)s \n}' % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope))}
+        result='try { \n%(body)s \n}' % {'body': JCompiler.indent(self.visit_stmt_list(node.body, PhantomScope(scope,True)))}
         if node.handlers:
-            result += ' catch (e$) { \n%(catch)s \n}' % {'catch': JCompiler.indent(self.visit(condition, scope))}
+            result += ' catch (%(catch_variable_name)s) { \n%(catch)s \n}' \
+                    % {'catch': JCompiler.indent(self.visit(condition, catch_scope)),
+                       'catch_variable_name':catch_variable_name}
         return result
 
     def visit_TryFinally(self, node, scope):
         # TryFinally(stmt* body, stmt* finalbody)
         if len(node.body)==1 and isinstance(node.body[0], ast.TryExcept):
             return '%(try)s finally { \n%(body)s \n}' \
-                    % {'try': self.visit(node.body[0], scope),
-                       'body': JCompiler.indent(self.generic_visit_list(node.finalbody, scope))}
+                    % {'try': self.visit(node.body[0], PhantomScope(scope, False)),
+                       'body': JCompiler.indent(self.visit_stmt_list(node.finalbody, scope))}
         else:
             template='try { \n%(body)s \n} finally { \n%(finalbody)s \n}'
-            return template % {'body': JCompiler.indent(self.generic_visit_list(node.body, scope)),
-                               'finalbody': JCompiler.indent(self.generic_visit_list(node.finalbody, scope))}
+            return template % {'body': JCompiler.indent(self.visit_stmt_list(node.body, scope)),
+                               'finalbody': JCompiler.indent(self.visit_stmt_list(node.finalbody, scope))}
 
     def visit_Raise(self, node, scope):
+        # Raise(expr? exc, expr? cause)
+        if node.exc:
+            return 'throw %s;' % self.visit(node.exc, PhantomScope(scope, False))
+        else:
+            # raise re-raises the last exception that was active in the current scope
+            # If no exception is active in the current scope, a TypeError exception is raised
+            # indicating that this is an error
+            last_exception_name=getattr(scope, 'catch_variable_name', 'TypeError')
+            return 'throw %s;' % last_exception_name
 
-        pass
-
+    @check_semi_after
     def visit_Num(self, node, scope):
         return str(node.n)
 
-    def visit_Not(self, node, scope):
-        return "!" + self.visit(node.expr, scope)
-
     def visit_Break(self, node, scope):
-        return 'break'
+        return 'break;'
 
     def visit_Continue(self, node, scope):
-        return 'continue'
+        return 'continue;'
 
+    @check_semi_after
     def visit_BoolOp(self, node, scope):
         # BoolOp(boolop op, expr* values)
         # boolop = And | Or
         if isinstance(node.op,ast.And):
-            return "py.__and(%s)" % ", ".join(self.visit(child,scope) for child in node.values)
+            return "py.__and(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
         elif isinstance(node.op, ast.Or):
-            return "py.__or(%s)" % ", ".join(self.visit(child,scope) for child in node.values)
+            return "py.__or(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
 
     def visit_BinOp(self, node, scope):
         # BinOp(expr left, operator op, expr right)
@@ -374,32 +449,37 @@ while True:
         '|' if isinstance(node.op, ast.Or) else \
         None
 
-        left=self.visit(node.left, scope)
-        right=self.visit(node.right, scope)
+        left=self.visit(node.left, PhantomScope(scope, False))
+        right=self.visit(node.right, PhantomScope(scope, False))
         return '%(left)s %(operator)s %(right)s' % {'left': left, 'operator': op, 'right': right}
 
+    @check_semi_after
     def visit_UnaryOp(self, node, scope):
         # UnaryOp(unaryop op, expr operand)
         # unaryop = Invert | Not | UAdd | USub
 
         if isinstance(node.op, ast.Not):
-            return '!' + self.visit(node.operand, scope)
+            return '!' + self.visit(node.operand, PhantomScope(scope, False))
         raise NotImplementedError
 
+    @check_semi_after
     def visit_Call(self, node, scope):
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
         template='%(func)s(%(args)s)'
-        return template % {'func': self.visit(node.func, scope),
-                           'args': self.generic_visit_list(node.args, scope, ', ')}
+        return template % {'func': self.visit(node.func, PhantomScope(scope, False)),
+                           'args': self.generic_visit_list(node.args, PhantomScope(scope, False), ', ')}
 
+    @check_semi_after
     def visit_Str(self, node, scope):
         # Str(string s)
         return "\"%s\"" % node.s
 
+    @check_semi_after
     def visit_Attribute(self, node, scope):
         # Attribute(expr value, identifier attr, expr_context ctx)
         return '%(value)s.%(identifier)s' % { 'value':self.visit(node.value, scope), 'identifier': str(node.attr)}
 
+    @check_semi_after
     def visit_Name(self, node, scope):
         # Name(identifier id, expr_context ctx)
         # expr_context = Load | Store | Del | AugLoad | AugStore | Param
@@ -411,6 +491,9 @@ while True:
             return 'false'
         elif name=='None':
             return 'undefined'
+        elif name=='this':
+            # this keyword has a particular interpretation in JS, so change it...
+            return '$this'
         else:
             if isinstance(node.ctx, ast.Store): scope.define(name)
 
@@ -418,24 +501,7 @@ while True:
 
 js=JCompiler()
 code="""
-class A:
-    def foo(self):
-        print('foo from A')
-
-class B:
-    def foo(self):
-        print('foo from B')
-
-    def only_bb(self): return 1
-
-class C(A,B):
-    def foo(self):
-        A.foo(self)
-        B.foo(self)
-        print('foo from C')
-
-    def bla(self):
-        print('bla from C')
+raise
 """
 
 program=compile(code)

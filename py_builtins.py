@@ -34,16 +34,9 @@ class range_iter:
 
         return Iter()
 
-class A:
-    def foo(self):
-        print('foo from A')
-
-class B:
-    def foo(self):
-        print('foo from B')
-
-def C(A,B):
-    def foo(self):
-        A.foo(self)
-        B.foo(self)
-        print('foo from C')
+def min(*args):
+    result=args[0]
+    for i in args:
+        if i<result:
+            result = i
+    return result
