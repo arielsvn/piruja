@@ -32,7 +32,7 @@ py = (function () {
             // and True is returned when the length is not zero
             return x.__len__() !== 0;
         }
-        else{
+        else {
             // If a class defines neither __len__() nor __bool__(), all its instances are considered true.
 
             // delegate to JS truth value testing...
@@ -218,7 +218,7 @@ py = (function () {
     }
 
     var getattr;
-    getattr = builtin.getattr=function(target, name){
+    getattr = builtin.getattr=function(target, name, default_value){
         // todo implement builtins.getattr
 
         // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
@@ -227,9 +227,24 @@ py = (function () {
 
     };
 
+    var hasattr;
+    hasattr = builtin.hasattr = function(target, name){
+        // hasattr(object, name) -> bool
+        // Return whether the object has an attribute with the given name.
+        //  (This is done by calling getattr(object, name) and catching exceptions.)
+
+    };
+
     var setattr;
     setattr = builtin.setattr=function(target, name, value){
         // todo implement builtins.setattr
+    };
+
+    var delattr;
+    delattr = builtin.delattr = function(target, name){
+        // delattr(object, name)
+        // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
+
     };
 
     var object;
@@ -317,6 +332,7 @@ py = (function () {
             else {
                 // when a type is called it returns a new type
                 function Class() {
+                    // create the instance
                     var instance = Class.__new__.apply(Class, append(Class, arguments));
 
                     instance.__class__ = Class;
@@ -337,13 +353,13 @@ py = (function () {
 
                 extend(Class, builtin.object);
 
-                Class.__new__=function(cls){
+                Class.__new__ = function(cls){
                     return builtin.object.__new__(Class);
                 };
 
                 // TODO: Change this to add the methods like the new-style class (diamond form)
                 var reversed = bases.reverse();
-                for (var i=0; i<len(reversed);i++)
+                for (var i=0; i<len(reversed); i++)
                     extend(Class, bases[i])
 
                 Class.__dict__ = dict;
@@ -360,13 +376,14 @@ py = (function () {
 
     builtin.object.__class__ = builtin.type;
 
-    var NotImplemented;
+
     // This type has a single value. There is a single object with this value
     // Numeric methods and rich comparison methods may return this value if they
     // do not implement the operation for the operands provided. (The interpreter will
     // then try the reflected operation, or some other fallback, depending on the operator.)
     // Its truth value is true.
-    NotImplemented= builtin.NotImplemented = object();
+    var NotImplemented;
+    NotImplemented = builtin.NotImplemented = object();
 
     builtin.function_base=(function(){
         // all functions inherit from the class function in python, however
@@ -468,11 +485,43 @@ py = (function () {
 
         // binary operations
         // Add | Sub | Mult | Div | Mod | Pow | LShift | RShift | BitOr | BitXor | BitAnd | FloorDiv
-        add : function(x,y){
+        add : function(x, y) {
+            var result;
+            if (hasattr(x, '__add__'))
+            {
+                result = getattr(x, '__add__')(y);
+                if (result!==NotImplemented)
+                    return result;
+            }
 
+            if (type(x) !== type(y) && hasattr(y, '__radd__'))
+            {
+                result=getattr(y, '__radd__')(x);
+                if (result!==NotImplemented)
+                    return result;
+            }
+
+            // check JS types and add them too
+
+            throw 'TypeError: unsupported operand type(s) for +: object and object';
         },
         sub : function(x,y){
+            var result;
+            if (hasattr(x, '__sub__'))
+            {
+                result = getattr(x, '__sub__')(y);
+                if (result!==NotImplemented) return result;
+            }
 
+            if (type(x) !== type(y) && hasattr(y, '__rsub__'))
+            {
+                result=getattr(y, '__rsub__')(x);
+                if (result!==NotImplemented) return result;
+            }
+
+            // check JS types and sub them too
+
+            throw 'TypeError: unsupported operand type(s) for -: object and object';
         },
         mult : function(x,y){
 
@@ -541,7 +590,45 @@ py = (function () {
         },
         ifloordiv: function(target,value){
 
+        },
+
+        // comparison operators
+        eq: function(x,y){
+            // x == y
+
+        },
+        noteq: function(x,y){
+            // x != y
+        },
+        lt: function(x,y){
+            // x < y
+        },
+        lte: function(x,y){
+            // x <= y
+        },
+        gt: function(x,y){
+            // x > y
+        },
+        gte: function(x,y){
+            // x >= y
+        },
+        is: function(x,y){
+            // x is y
+        },
+        isnot: function(x,y){
+            // x not is y
+
+        },
+        into: function(x,y){
+            // x in y
+            // operator 'in', changed because 'in' is a JS reserved word
+
+        },
+        notin: function(x,y){
+            // x not in y
+
         }
+
     };
 
 

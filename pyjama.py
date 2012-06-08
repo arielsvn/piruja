@@ -351,7 +351,7 @@ var %(name)s=(function(){
     def visit_If(self, node, scope):
         # If(expr test, stmt* body, stmt* orelse)
         template =\
-"""if (%(test)s) {
+"""if (bool(%(test)s)) {
 %(body)s
 } %(extra)s"""
 
@@ -363,19 +363,19 @@ var %(name)s=(function(){
     def visit_While(self, node, scope):
         # While(expr test, stmt* body, stmt* orelse)
         if not node.orelse:
-            template = "while (%(test)s) { \n%(body)s \n}"
+            template = "while (bool(%(test)s)) { \n%(body)s \n}"
             return template % {'test': self.visit(node.test, PhantomScope(scope, False)),
                                'body': self.visit_stmt_list(node.body, PhantomScope(scope, True))}
         else:
             # rewrite the expression
             code = """
-while True:
-    if test:
-        import body
-    else:
-        import orelse
-        break
-"""
+            while True:
+                if test:
+                    import body
+                else:
+                    import orelse
+                    break
+            """
             transformed = JCompiler.build_ast(code,
                 test=node.test,
                 body=node.body,
@@ -548,7 +548,7 @@ while True:
                     'gte' if isinstance(op,ast.GtE) else\
                     'is' if isinstance(op,ast.Is) else\
                     'isnot' if isinstance(op,ast.IsNot) else\
-                    'in' if isinstance(op,ast.In) else\
+                    'into' if isinstance(op,ast.In) else\
                     'notin' if isinstance(op,ast.NotIn) else\
                     None
 
@@ -616,12 +616,34 @@ while True:
 
 js = JCompiler()
 code = """
-def foo():
-    if 1>= 2 > 2:
-        a23.t6=c=v=ta().b().x=35
-    else:
-        a23.t6=c=v=ta().b().x=351
-    print(a23.t3)
+class range_iter(Iter(), B()):
+    def __init__(self, start, stop = None, step = 1):
+        if not stop:
+            self.start=1
+            self.stop=start
+        else:
+            self.start = start
+            self.stop = stop
+
+        self.step = step
+
+    def __iter__(self):
+        parent=self
+        class Iter:
+            def __init__(self):
+                self.current=parent.start - parent.step
+
+            def __iter__(self): return Iter()
+
+            def __next__(self):
+                self.current += parent.step
+
+                if self.current >= parent.stop:
+                    raise StopIteration
+
+                return self.current
+
+        return Iter()
 """
 
 program = compile(code)
