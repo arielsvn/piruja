@@ -73,7 +73,6 @@ def concat(separator):
 
     return decorator
 
-
 def check_semi_after(func):
     # decorator that checks if the statement must be followed by a semicolon
     # and adds it automatically if needed
@@ -83,8 +82,26 @@ def check_semi_after(func):
 
     return wrapper
 
+def check_not(value):
+    # raises an exception if the target method returns the specified value
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if result == value:
+                raise Exception('function %s() returned %s!!!' %(func.__name__, value))
+            return result
+        return wrapper
+    return decorator
 
-class JCompiler:
+class Compiler_Checks(type):
+    def __new__(mcs, name, bases, dict):
+        for key in dict:
+            if key.startswith('visit_'):
+                dict[key] = check_not(None)(dict[key])
+
+        return type.__new__(mcs, name, bases, dict)
+
+class JCompiler(metaclass = Compiler_Checks):
     builtins = ['type', 'function_base', 'iter', 'range', 'next', 'isinstance', 'print']
 
     def import_builtins(self):
@@ -318,7 +335,7 @@ var %(name)s=(function(){
 
             non_attributes=[expr for expr in node.targets if not isinstance(expr, ast.Attribute)]
             chain = ' = '.join(self.visit(expr, PhantomScope(scope, False)) for expr in non_attributes)\
-                + ' = ' + value + ';'
+            + ' = ' + value + ';'
 
             attributes=[expr for expr in node.targets if isinstance(expr, ast.Attribute)]
             attribute_chain = '\n'.join(set_item(expr, value_var_name) for expr in attributes)
@@ -345,8 +362,6 @@ var %(name)s=(function(){
         target = self.visit(node.target, PhantomScope(scope, False))
         value = self.visit(node.value, PhantomScope(scope, False))
         return '%(target)s = $op.%(operator)s(%(target)s, %(value)s)' % {'target': target, 'operator': op, 'value': value}
-
-        pass
 
     def visit_If(self, node, scope):
         # If(expr test, stmt* body, stmt* orelse)
@@ -534,6 +549,17 @@ while True:
 
         return '$op.%(op)s(%(operand)s)' % {'op':op , 'operand': self.visit(node.operand, PhantomScope(scope, False))}
 
+    def visit_Lambda(self, node, scope):
+        # Lambda(arguments args, expr body)
+        arguments = [str(arg.arg) for arg in node.args.args]
+        if node.args.vararg:
+            arguments += [node.args.vararg]
+        if node.args.kwarg:
+            arguments += [node.args.kwarg]
+
+        return 'function(%(args)s) { return %(body)s; }' % {'args':', '.join(arguments),
+                                                    'body': self.visit(node.body, PhantomScope(scope, False)).replace('\n','')}
+
     def visit_Compare(self, node, scope):
         # Compare(expr left, cmpop* ops, expr* comparators)
 
@@ -570,7 +596,6 @@ while True:
             result+='return false;'
             return "(function(){ %s })()" % result
 
-
     @check_semi_after
     def visit_Call(self, node, scope):
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
@@ -586,13 +611,13 @@ while True:
     @check_semi_after
     def visit_Attribute(self, node, scope):
         # Attribute(expr value, identifier attr, expr_context ctx)
-#        if node.ctx==ast.Load:
-        return 'getattr(%(value)s,\'%(identifier)s\')' % {'value': self.visit(node.value, PhantomScope(scope, False)),
-                                                      'identifier': str(node.attr)}
-
-#        elif node.ctx==ast.Store:
-#            return 'getattr(%(value)s,%(identifier)s)' % {'value': self.visit(node.value, PhantomScope(scope, False)),
-#                                                          'identifier': str(node.attr)}
+        # expr_context = Load | Store | Del | AugLoad | AugStore | Param
+        if isinstance(node.ctx,ast.Load):
+            return 'getattr(%(value)s,\'%(identifier)s\')' % {'value': self.visit(node.value, PhantomScope(scope, False)),
+                                                          'identifier': str(node.attr)}
+        elif isinstance(node.ctx,ast.Store) or isinstance(node.ctx, ast.AugStore):
+            return '%(value)s.%(identifier)s' % {'value': self.visit(node.value, PhantomScope(scope, False)),
+                                                          'identifier': str(node.attr)}
 
     @check_semi_after
     def visit_Name(self, node, scope):
@@ -616,34 +641,7 @@ while True:
 
 js = JCompiler()
 code = """
-class range_iter(Iter(), B()):
-    def __init__(self, start, stop = None, step = 1):
-        if not stop:
-            self.start=1
-            self.stop=start
-        else:
-            self.start = start
-            self.stop = stop
-
-        self.step = step
-
-    def __iter__(self):
-        parent=self
-        class Iter:
-            def __init__(self):
-                self.current=parent.start - parent.step
-
-            def __iter__(self): return Iter()
-
-            def __next__(self):
-                self.current += parent.step
-
-                if self.current >= parent.stop:
-                    raise StopIteration
-
-                return self.current
-
-        return Iter()
+bla.foo = lambda x: x+1
 """
 
 program = compile(code)
