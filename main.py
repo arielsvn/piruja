@@ -2,10 +2,12 @@
 class A:
     pass
 
-def bla(x, **kwargs):
-    print(x)
+def bla(**kwargs):
+    print(kwargs)
+    del kwargs['bla']
     print(kwargs)
 
-dd={'1':'2', '3':'4'}
-for k in dd:
-    print(k)
+
+d={'foo':1, 'bla':2}
+bla(**d)
+print('original ',d)

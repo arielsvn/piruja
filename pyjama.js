@@ -17,6 +17,32 @@ py = (function () {
         throw 'object has no length'
     };
 
+    var bool;
+    bool = builtin.bool = function(x){
+        // Convert a value to a Boolean, using the standard truth testing procedure.
+        // If x is false or omitted, this returns False; otherwise it returns True.
+        if (x===undefined || x === false) {
+            return false;
+        }
+        else if ('__bool__' in x)
+            return x.__bool__();
+        else if ('__len__' in x)
+        {
+            // When __bool is not defined, __len__() is called, if it is defined (see below)
+            // and True is returned when the length is not zero
+            return x.__len__() !== 0;
+        }
+        else{
+            // If a class defines neither __len__() nor __bool__(), all its instances are considered true.
+
+            // delegate to JS truth value testing...
+            if (x)
+                return true;
+            else
+                return false;
+        }
+    };
+
     var issubclass;
     issubclass = builtin.issubclass = function (C, B){
         // issubclass(C, B) -> bool
@@ -191,7 +217,23 @@ py = (function () {
         child.__bases__.push(parent);
     }
 
-    builtin.object = (function () {
+    var getattr;
+    getattr = builtin.getattr=function(target, name){
+        // todo implement builtins.getattr
+
+        // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
+        // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
+        // through the base classes of type(a) excluding metaclasses.
+
+    };
+
+    var setattr;
+    setattr = builtin.setattr=function(target, name, value){
+        // todo implement builtins.setattr
+    };
+
+    var object;
+    object = builtin.object = (function () {
         function object() {
             return object.__call__.apply(object, arguments);
         }
@@ -318,6 +360,14 @@ py = (function () {
 
     builtin.object.__class__ = builtin.type;
 
+    var NotImplemented;
+    // This type has a single value. There is a single object with this value
+    // Numeric methods and rich comparison methods may return this value if they
+    // do not implement the operation for the operands provided. (The interpreter will
+    // then try the reflected operation, or some other fallback, depending on the operator.)
+    // Its truth value is true.
+    NotImplemented= builtin.NotImplemented = object();
+
     builtin.function_base=(function(){
         // all functions inherit from the class function in python, however
         // this class isn't in the builtins.
@@ -388,118 +438,112 @@ py = (function () {
     builtin.print = console.log;
     builtin.input=function(msg){ prompt(msg,''); };
 
+    // all operation must be defined because the interpreter must test
+    // if the target types contains the special method
+    // this shouldn't be used by any python program as this is part of the interpreter implementation
+    // todo implement operations
+    builtin.$op={
+        // bool operations, use arguments
+        and: function(){
+
+        },
+        or: function(){
+
+        },
+
+        // unary operations
+        // Invert | Not | UAdd | USub
+        invert: function(x){
+
+        },
+        not: function(x){
+
+        },
+        uadd: function(x){
+
+        },
+        usub: function(x){
+
+        },
+
+        // binary operations
+        // Add | Sub | Mult | Div | Mod | Pow | LShift | RShift | BitOr | BitXor | BitAnd | FloorDiv
+        add : function(x,y){
+
+        },
+        sub : function(x,y){
+
+        },
+        mult : function(x,y){
+
+        },
+        div : function(x,y){
+
+        },
+        mod : function(x,y){
+
+        },
+        pow : function(x,y){
+
+        },
+        lshift : function(x,y){
+
+        },
+        rshift : function(x,y){
+
+        },
+        bitor : function(x,y){
+
+        },
+        bitxor : function(x,y){
+
+        },
+        bitand : function(x,y){
+
+        },
+        floordiv: function(x,y){
+
+        },
+
+        // augmented operations
+        iadd : function(target,value){
+
+        },
+        isub : function(target,value){
+
+        },
+        imult : function(target,value){
+
+        },
+        idiv : function(target,value){
+
+        },
+        imod : function(target,value){
+
+        },
+        ipow : function(target,value){
+
+        },
+        ilshift : function(target,value){
+
+        },
+        irshift : function(target,value){
+
+        },
+        ibitor : function(target,value){
+
+        },
+        ibitxor : function(target,value){
+
+        },
+        ibitand : function(target,value){
+
+        },
+        ifloordiv: function(target,value){
+
+        }
+    };
+
+
     return builtin;
-})();
-
-var type=py.type, function_base=py.function_base, iter=py.iter, range=py.range, next=py.next, isinstance=py.isinstance, print=py.print;
-var main=(function(){
-    var main={};
-    var A, B, C;
-    A = (function(){
-        var __dict__={};
-        var foo;
-        foo = (function(){
-            function foo(self){
-
-                print("foo from A")
-            }
-
-            var attributes={
-                name: 'foo',
-                module: 'main',
-                defaults: [],
-                globals: main,
-                kwdefaults: {}
-            }
-
-            return function_base(attributes, foo);
-        })();
-        __dict__.foo = foo;
-        return type('A', [], __dict__);
-    })();
-    B = (function(){
-        var __dict__={};
-        var foo, only_bb;
-        foo = (function(){
-            function foo(self){
-
-                print("foo from B")
-            }
-
-            var attributes={
-                name: 'foo',
-                module: 'main',
-                defaults: [],
-                globals: main,
-                kwdefaults: {}
-            }
-
-            return function_base(attributes, foo);
-        })();
-        only_bb = (function(){
-            function only_bb(self){
-
-                return 1;
-            }
-
-            var attributes={
-                name: 'only_bb',
-                module: 'main',
-                defaults: [],
-                globals: main,
-                kwdefaults: {}
-            }
-
-            return function_base(attributes, only_bb);
-        })();
-        __dict__.foo = foo;
-        __dict__.only_bb = only_bb;
-        return type('B', [], __dict__);
-    })();
-    C = (function(){
-        var __dict__={};
-        var foo, bla;
-        foo = (function() {
-            function foo(self) {
-
-                A.foo(self)
-                B.foo(self)
-                print("foo from C")
-            }
-
-            var attributes;
-            attributes = {
-                name:'foo',
-                module:'main',
-                defaults:[],
-                globals:main,
-                kwdefaults:{}
-            };
-
-            return function_base(attributes, foo);
-        })();
-        bla = (function(){
-            function bla(self){
-
-                print("bla from C")
-            }
-
-            var attributes={
-                name: 'bla',
-                module: 'main',
-                defaults: [],
-                globals: main,
-                kwdefaults: {}
-            }
-
-            return function_base(attributes, bla);
-        })();
-        __dict__.foo = foo;
-        __dict__.bla = bla;
-        return type('C', [A, B], __dict__);
-    })();
-    main.A = A;
-    main.B = B;
-    main.C = C;
-    return main;
 })();
