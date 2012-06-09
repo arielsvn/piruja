@@ -37,7 +37,6 @@ class BaseScope:
         else:
             raise AttributeError
 
-
 class PhantomScope(BaseScope):
     def __init__(self, parent, semi_after=None, **kwfields):
         super().__init__(parent, semi_after)
@@ -54,7 +53,6 @@ class PhantomScope(BaseScope):
         else:
             return getattr(self.parent, name)
 
-
 def compile(program):
     compiler = JCompiler()
     tree = ast.parse(program)
@@ -62,7 +60,6 @@ def compile(program):
     class ProgramScope(BaseScope): name = 'main'
 
     return compiler.visit(tree, ProgramScope())
-
 
 def concat(separator):
     def decorator(func):
@@ -102,7 +99,7 @@ class Compiler_Checks(type):
         return type.__new__(mcs, name, bases, dict)
 
 class JCompiler(metaclass = Compiler_Checks):
-    builtins = ['type', 'function_base', 'iter', 'range', 'next', 'isinstance', 'print']
+    builtins = ['type', 'function_base', 'iter', 'range', 'next', 'isinstance', 'print', '$op']
 
     def import_builtins(self):
         namespace = 'py'
@@ -197,6 +194,8 @@ class JCompiler(metaclass = Compiler_Checks):
 
         # arg = (identifier arg, expr? annotation)
 
+        # todo function attributes can be smaller
+
         template =\
 """%(name)s = (function(){
     function %(name)s(%(arguments)s){
@@ -204,11 +203,7 @@ class JCompiler(metaclass = Compiler_Checks):
 %(code)s
     }
     var $attributes={
-        name: '%(name)s',
-        module: '%(module_name)s',
-        defaults: [%(defaults)s],
-        globals: %(module_name)s,
-        kwdefaults: {}
+%(attributes)s
     };
     return function_base($attributes, %(name)s);
 })();"""
@@ -236,10 +231,27 @@ class JCompiler(metaclass = Compiler_Checks):
         body = self.generic_visit_list(node.body, function_scope)
         # at the top of the function all local vars are declared
         vars = JCompiler.scope_vars_declaration(function_scope)
+
+        @concat(',\n')
+        def attributes():
+            yield 'name: \'%s\'' % name
+            yield 'module: \'%s\'' % scope.root().name
+            yield 'globals: %s' % scope.root().name
+            if node.args.defaults:
+                yield 'defaults: [%s]' % ', '.join(self.visit(expr, BaseScope(scope, False)) for expr in node.args.defaults)
+            # yield 'kwdefaults: {}'
+
+            @concat(', ')
+            def data():
+                yield 'arg_names: [%s]' % ', '.join('\'%s\'' % str(arg.arg) for arg in node.args.args)
+                yield 'starargs: %s' % ('true' if node.args.vararg else 'false')
+                yield 'kwargs: %s' % ('true' if node.args.kwarg else 'false')
+            yield '__$data__: { %s }' % data()
+
         scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body, 2),
                            'arguments': ', '.join(arguments), 'vars': vars,
-                           'module_name': scope.root().name, 'defaults': defaults}
+                           'attributes': JCompiler.indent(attributes(),2)}
 
     def visit_ClassDef(self, node, scope):
         # ClassDef(identifier name, expr* bases, keyword* keywords, expr? starargs,
@@ -370,17 +382,29 @@ var %(name)s=(function(){
 %(body)s
 } %(extra)s"""
 
+        def orelse():
+            if not node.orelse:
+                return ''
+
+            if len(node.orelse)==1:
+                stmt = node.orelse[0]
+                return 'else %s' % self.visit(stmt, PhantomScope(scope, True))
+            else:
+                return 'else {\n%s \n}' % JCompiler.indent(self.visit_stmt_list(node.orelse, PhantomScope(scope, True)))
+
         return template % {'test': self.visit(node.test, PhantomScope(scope, False)),
                            'body': JCompiler.indent(self.visit_stmt_list(node.body, PhantomScope(scope, True))),
-                           'extra': ('else {\n%s \n}' % JCompiler.indent(self.visit_stmt_list(node.orelse, PhantomScope(scope, True))))
-                                                    if node.orelse else ''}
+                           'extra': orelse()}
 
     def visit_While(self, node, scope):
         # While(expr test, stmt* body, stmt* orelse)
         if not node.orelse:
-            template = "while (bool(%(test)s)) { \n%(body)s \n}"
+            template = \
+"""while (bool(%(test)s)) {
+%(body)s
+}"""
             return template % {'test': self.visit(node.test, PhantomScope(scope, False)),
-                               'body': self.visit_stmt_list(node.body, PhantomScope(scope, True))}
+                               'body': JCompiler.indent(self.visit_stmt_list(node.body, PhantomScope(scope, True)))}
         else:
             # rewrite the expression
             code = """
@@ -509,9 +533,9 @@ while True:
         # BoolOp(boolop op, expr* values)
         # boolop = And | Or
         if isinstance(node.op, ast.And):
-            return "py.__and(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
+            return "$op.and(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
         elif isinstance(node.op, ast.Or):
-            return "py.__or(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
+            return "$op.or(%s)" % ", ".join(self.visit(child, PhantomScope(scope, False)) for child in node.values)
 
     def visit_BinOp(self, node, scope):
         # BinOp(expr left, operator op, expr right)
@@ -599,9 +623,22 @@ while True:
     @check_semi_after
     def visit_Call(self, node, scope):
         # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
-        template = '%(func)s(%(args)s)'
+        # keyword = (identifier arg, expr value)
+        template = '%(func)s(%(args)s{%(kwargs)s})'
+        args = self.generic_visit_list(node.args, PhantomScope(scope, False), ', ')
+        if args: args+=', '
+
+        @concat(', ')
+        def keys():
+            for key in node.keywords:
+                yield '%(key)s: %(value)s' % {'key': key.arg, 'value': self.visit(key.value, PhantomScope(scope, False))}
+            if node.starargs:
+                yield '$arg: %s' % self.visit(node.starargs, PhantomScope(scope, False))
+            if node.kwargs:
+                yield '$kwarg: %s' % self.visit(node.kwargs, PhantomScope(scope, False))
+
         return template % {'func': self.visit(node.func, PhantomScope(scope, False)),
-                           'args': self.generic_visit_list(node.args, PhantomScope(scope, False), ', ')}
+                           'args': args, 'kwargs': keys()}
 
     @check_semi_after
     def visit_Str(self, node, scope):
@@ -618,6 +655,36 @@ while True:
         elif isinstance(node.ctx,ast.Store) or isinstance(node.ctx, ast.AugStore):
             return '%(value)s.%(identifier)s' % {'value': self.visit(node.value, PhantomScope(scope, False)),
                                                           'identifier': str(node.attr)}
+
+    def visit_Subscript(self, node, scope):
+        # Subscript(expr value, slice slice, expr_context ctx)
+        #slice = Slice(expr? lower, expr? upper, expr? step) | ExtSlice(slice* dims) | Index(expr value)
+
+        # todo implement slices
+
+        if isinstance(node.ctx, ast.Load):
+            return '%(target)s.__getitem__(%(index)s)' % {'target': self.visit(node.value, PhantomScope(scope, False)),
+                                                        'index': self.visit(node.slice, PhantomScope(scope, False))}
+
+    def visit_Slice(self, node, scope):
+        # Slice(expr? lower, expr? upper, expr? step)
+        # slice([start,] stop[, step])
+
+        @concat(', ')
+        def args():
+            if node.lower: yield self.visit(node.lower, PhantomScope(scope, False))
+            if node.upper: yield self.visit(node.upper, PhantomScope(scope, False))
+            if node.step: yield self.visit(node.step, PhantomScope(scope, False))
+
+        return 'slice(%s)' % args()
+
+    def visit_ExtSlice(self, node, scope):
+        # ExtSlice(slice* dims)
+        return ', '.join(self.visit(sli, PhantomScope(scope, False)) for sli in node.dims)
+
+    def visit_Index(self, node, scope):
+        # Index(expr value)
+        return self.visit(node.value, PhantomScope(scope, False))
 
     @check_semi_after
     def visit_Name(self, node, scope):
@@ -640,11 +707,14 @@ while True:
             return name
 
 js = JCompiler()
+
 code = """
-bla.foo = lambda x: x+1
+def foo(x, y=1):
+    return x+y
+
+def printfoo():
+    print(foo(2,1))
 """
 
 program = compile(code)
 print(program)
-
-

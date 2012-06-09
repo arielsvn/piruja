@@ -1,5 +1,4 @@
-var py;
-py = (function () {
+var py = (function () {
     var builtin = {};
 
     (function (){
@@ -9,16 +8,18 @@ py = (function () {
         Array.prototype.__len__ = function(){return this.length;};
     })();
 
-    var len;
-    len = builtin.len = function(seq){
+    var len = builtin.len = function(seq){
         if (seq.__len__)
             return seq.__len__();
+        else if (seq.length){
+            // function argument length
+            return seq.length;
+        }
 
         throw 'object has no length'
     };
 
-    var bool;
-    bool = builtin.bool = function(x){
+    var bool = builtin.bool = function(x){
         // Convert a value to a Boolean, using the standard truth testing procedure.
         // If x is false or omitted, this returns False; otherwise it returns True.
         if (x===undefined || x === false) {
@@ -43,8 +44,7 @@ py = (function () {
         }
     };
 
-    var issubclass;
-    issubclass = builtin.issubclass = function (C, B){
+    var issubclass = builtin.issubclass = function (C, B){
         // issubclass(C, B) -> bool
 
         // Return whether class C is a subclass (i.e., a derived class) of class B.
@@ -57,22 +57,20 @@ py = (function () {
         }
         else{
             for (var i=0; i<len(C.__bases__); i++){
-                if (builtin.issubclass(C.__bases__[i], B))
+                if (issubclass(C.__bases__[i], B))
                     return true;
             }
             return false;
         }
     };
 
-    var isinstance;
-    isinstance=builtin.isinstance = function (item, classinfo) {
+    var isinstance=builtin.isinstance = function (item, classinfo) {
         if (item.__class__)
             return issubclass(item.__class__, classinfo);
         else return false;
     };
 
-    var iter;
-    iter = builtin.iter = function(source, sentinel){
+    var iter = builtin.iter = function(source, sentinel){
         // iter(iterable) -> iterator
         // iter(callable, sentinel) -> iterator
 
@@ -87,7 +85,6 @@ py = (function () {
         function wrapper() {
             return func.apply(this, Array.apply(this, arguments).slice(1));
         }
-
         return wrapper();
     };
 
@@ -217,38 +214,8 @@ py = (function () {
         child.__bases__.push(parent);
     }
 
-    var getattr;
-    getattr = builtin.getattr=function(target, name, default_value){
-        // todo implement builtins.getattr
 
-        // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
-        // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
-        // through the base classes of type(a) excluding metaclasses.
-
-    };
-
-    var hasattr;
-    hasattr = builtin.hasattr = function(target, name){
-        // hasattr(object, name) -> bool
-        // Return whether the object has an attribute with the given name.
-        //  (This is done by calling getattr(object, name) and catching exceptions.)
-
-    };
-
-    var setattr;
-    setattr = builtin.setattr=function(target, name, value){
-        // todo implement builtins.setattr
-    };
-
-    var delattr;
-    delattr = builtin.delattr = function(target, name){
-        // delattr(object, name)
-        // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
-
-    };
-
-    var object;
-    object = builtin.object = (function () {
+    var object = builtin.object = (function () {
         function object() {
             return object.__call__.apply(object, arguments);
         }
@@ -314,8 +281,7 @@ py = (function () {
         return object;
     })();
 
-    var type;
-    type = builtin.type = (function () {
+    var type = builtin.type = (function () {
         // type(object) -> the object's type
         // type(name, bases, dict) -> a new type
         function type(name, bases, dict) {
@@ -327,8 +293,13 @@ py = (function () {
         extend(type, builtin.object);
 
         type.__call__ = function(name, bases, dict){
-            if (arguments.length == 1)
-                return name.__class__;
+            if (bases==undefined && dict===undefined){
+                if (name.__class__)
+                    return name.__class__;
+
+                // todo convert the JS object to a python object
+                return typeof(name);
+            }
             else {
                 // when a type is called it returns a new type
                 function Class() {
@@ -373,9 +344,7 @@ py = (function () {
 
         return type;
     })();
-
     builtin.object.__class__ = builtin.type;
-
 
     // This type has a single value. There is a single object with this value
     // Numeric methods and rich comparison methods may return this value if they
@@ -385,29 +354,74 @@ py = (function () {
     var NotImplemented;
     NotImplemented = builtin.NotImplemented = object();
 
-    builtin.function_base=(function(){
+    var function_base;
+
+    function_base = builtin.function_base=(function(){
         // all functions inherit from the class function in python, however
         // this class isn't in the builtins.
 
         var dict={
             __call__: function(self){
                 // TODO: process arguments here... (defaults, varargs, kwargs, etc...)
-                var args=Array.apply(this, arguments).slice(1);
 
-//                // get specific intepreter data about this function
-//                var data=self.__$data__;
-//                var length= data.parameter_count;
-//                if (data.starargs) length+=1;
-//                if (data.kwargs) length+=1;
-//
-//                if (length<len(arguments)) throw 'invalid parameters';
-//
-//                var result=new Array(length);
-//                for (var i=0; i<data.parameter_count; i++)
-//                    // skip the first argument because it's the function itself
-//                    result[i]=arguments[i+1];
+                // get specific interpreter data about this function
+                var data=self.__$data__,
+                    func_args = len(data.arg_names), // number of arguments in the original function
+                    call_args=len(arguments)-2, // number of arguments in the call stmt
+                    kwargs = arguments[len(arguments)-1];
 
-                return self.__code__.apply(this, args);
+                var result=new Array(func_args); // arguments that will be passed to the target function
+                for (var i=0; i<func_args; i++)
+                {
+                    // skip the first argument because it's the function itself
+                    var arg_name=data.arg_names[i];
+                    if (i<call_args)
+                    {
+                        result[i]=arguments[i+1];
+
+                        if (arg_name in kwargs)
+                            throw 'parameter specified more than once';
+                    }
+                    else {
+                        if (kwargs[arg_name])
+                            result[i] = kwargs[arg_name];
+                        else if (i >= func_args - len(self.__defaults__)){
+                            // no value was specified for the given parameter, use the default one
+                            result[i]=self.__defaults__[i - (func_args - len(self.__defaults__))];
+                        }
+                        else throw 'missing parameter ' + arg_name;
+                    }
+                }
+
+                if (func_args<call_args) {
+                    // more parameters than needed, add them to the star args
+                    if (!data.starargs)
+                        throw 'too many parameters';
+
+                    var star_length=call_args - func_args;
+                    if ('$arg' in kwargs)
+                        star_length += len(kwargs.$arg);
+
+                    // this shoould be a tuple, i think...
+                    var start_args=new Array(star_length);
+                    for (i=0; i< call_args - func_args; i++)
+                        start_args[i]=arguments[func_args + 1 + i];
+                    if (kwargs.$arg){
+                        for (i=call_args-func_args; i< star_length; i++)
+                            start_args[i]=kwargs.$arg[call_args-func_args-i];
+                    }
+                    result.push(start_args);
+                }
+
+                // check for duplicated values and add new items
+                if (data.kwarg){
+                    // check for extra keys in the dictionary
+                    // this should be a Python dict
+                    // and the original dict should be cloned
+                    result.push(data.kwarg);
+                }
+
+                return self.__code__.apply(this, result);
             },
             __init__: function(self, attributes, code) {
                 // Note: __doc__, __dict__, __closure__, __annotations__ missing
@@ -417,6 +431,7 @@ py = (function () {
                 self.__globals__ = attributes.globals;
                 self.__kwdefaults__ = attributes.kwdefaults;
                 self.__code__ = code;
+                self.__$data__ = attributes.__$data__;
             }
         };
 
@@ -459,13 +474,25 @@ py = (function () {
     // if the target types contains the special method
     // this shouldn't be used by any python program as this is part of the interpreter implementation
     // todo implement operations
-    builtin.$op={
+    var $op = builtin.$op={
         // bool operations, use arguments
         and: function(){
-
+            var result=true;
+            for (var i=0; i<arguments.length; i++)
+            {
+                result = result && bool(arguments[i]);
+                if (!result) return false;
+            }
+            return true;
         },
         or: function(){
-
+            var result=false;
+            for (var i=0; i<arguments.length; i++)
+            {
+                result = result || bool(arguments[i]);
+                if (result) return true;
+            }
+            return false;
         },
 
         // unary operations
@@ -499,6 +526,10 @@ py = (function () {
                 result=getattr(y, '__radd__')(x);
                 if (result!==NotImplemented)
                     return result;
+            }
+
+            if (type(x)=='number' && type(y)==='number'){
+                return x+y;
             }
 
             // check JS types and add them too
@@ -631,6 +662,73 @@ py = (function () {
 
     };
 
+    var getattr = builtin.getattr = (function(){
+        function getattr(target, name, default_value){
+            // todo implement builtins.getattr
+
+            // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
+            // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
+            // through the base classes of type(a) excluding metaclasses.
+
+            function bound(attribute){
+                if (issubclass(target, type)){
+                    // if the target is a type, then return the method
+                    return attribute;
+                }
+                else if (isinstance(attribute, function_base) || typeof(attribute) === 'function'){
+                    // if the target is a function return a new function with the target as the first argument
+                    function bounded(){
+                        return attribute.apply(target, append(target, arguments));
+                    }
+                    return bounded
+                }
+
+                return attribute;
+            }
+
+            // a.__dict__[name]
+            if (name in target){
+                return bound(target.__dict__[name]);
+            }
+            else if (name in type(target)){
+                return bound(type(target).__dict__[name]);
+            }
+            else{
+                // search on the base classes
+                // todo search for an attribute on the class hierarchy
+
+                // if the attribute isn't found return the default value if given
+                if (len(arguments)==3)
+                    return default_value;
+
+                throw 'missing attribute'
+                throw AttributeError();
+            }
+        }
+
+        return getattr;
+    })();
+
+    var hasattr = builtin.hasattr = function(target, name){
+        // hasattr(object, name) -> bool
+        // Return whether the object has an attribute with the given name.
+        //  (This is done by calling getattr(object, name) and catching exceptions.)
+        try{
+            return getattr(target, name) !== undefined;
+        } catch (e){
+            return false;
+        }
+    };
+
+    var setattr = builtin.setattr=function(target, name, value){
+        // todo implement builtins.setattr
+    };
+
+    var delattr = builtin.delattr = function(target, name){
+        // delattr(object, name)
+        // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
+
+    };
 
     return builtin;
 })();

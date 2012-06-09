@@ -40,3 +40,4 @@ def min(*args):
         if i<result:
             result = i
     return result
+
