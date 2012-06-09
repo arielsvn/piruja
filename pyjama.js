@@ -1,17 +1,10 @@
 var py = (function () {
     var builtin = {};
 
-    (function (){
-        // prepare arrays to behave like python lists
-
-        // Called to implement the built-in function len()
-        Array.prototype.__len__ = function(){return this.length;};
-    })();
-
     var len = builtin.len = function(seq){
         if (seq.__len__)
             return seq.__len__();
-        else if (seq.length){
+        else if (seq.length!==undefined){
             // function argument length
             return seq.length;
         }
@@ -214,7 +207,6 @@ var py = (function () {
         child.__bases__.push(parent);
     }
 
-
     var object = builtin.object = (function () {
         function object() {
             return object.__call__.apply(object, arguments);
@@ -271,6 +263,8 @@ var py = (function () {
             self[name] = undefined
         };
 
+        object.__str__ = function(self){return self;};
+
         object.__call__ = function(){
             // when object is called returns a new instance
             var instance= object.__new__.apply(object, append(object, arguments));
@@ -311,7 +305,7 @@ var py = (function () {
                     // members bound to it's instance should be of type method,
                     // but that could depend on the implementation, because
                     // the type method isn't part of the python builtins
-                    bound_members(instance, Class, no_instance_members);
+                    // bound_members(instance, Class, no_instance_members);
 
                     instance.__init__.apply(instance, arguments);
                     return instance;
@@ -333,8 +327,8 @@ var py = (function () {
                 for (var i=0; i<len(reversed); i++)
                     extend(Class, bases[i])
 
-                Class.__dict__ = dict;
                 copy_members(dict, Class);
+                Class.__dict__ = Class;
 
                 Class.__name__ = name;
 
@@ -346,17 +340,45 @@ var py = (function () {
     })();
     builtin.object.__class__ = builtin.type;
 
+    var number=builtin.number=(function(){
+        var __dict__={
+            __add__: function(self, other){ return self+other; },
+            __sub__: function(self, other){ return self-other; },
+            __mult__: function(self, other){ return self*other; },
+            __div__: function(self, other){ return self/other; }
+        };
+
+        return type('number',[], __dict__);
+    })();
+
+    var int = builtin.int=(function(){
+        var __dict__={};
+
+        return type('int',[number], __dict__);
+    })();
+
+    (function (){
+        // prepare arrays to behave like python lists
+
+        // Called to implement the built-in function len()
+        Array.prototype.__len__ = function(){return this.length;};
+    })();
+
+    (function (){
+        // prepare numbers to behave like python numbers
+
+        // Number represents an instance of the class number
+        Number.prototype.__class__ = number;
+    })();
+
     // This type has a single value. There is a single object with this value
     // Numeric methods and rich comparison methods may return this value if they
     // do not implement the operation for the operands provided. (The interpreter will
     // then try the reflected operation, or some other fallback, depending on the operator.)
     // Its truth value is true.
-    var NotImplemented;
-    NotImplemented = builtin.NotImplemented = object();
+    var NotImplemented = builtin.NotImplemented = object();
 
-    var function_base;
-
-    function_base = builtin.function_base=(function(){
+    var function_base = builtin.function_base=(function(){
         // all functions inherit from the class function in python, however
         // this class isn't in the builtins.
 
@@ -438,26 +460,6 @@ var py = (function () {
         return builtin.type('function', [], dict);
     })();
 
-    builtin.method=(function(){
-        // represents bound methods
-
-        var dict={
-            __call__: function(self){
-                // TODO: process arguments here... (defaults, varargs, kwargs, etc...)
-                // skip the first argument because it's the function itself
-                var args=Array.apply(this, arguments).slice(1);
-
-
-                return self.__code__.apply(this, args);
-            },
-            __init__: function(self, attributes, code) {
-                // Note: __doc__, __dict__, __closure__, __annotations__ missing
-            }
-        };
-
-        return builtin.type('method', [], dict);
-    })();
-
     builtin.dict=(function(){
         // todo implement dict in JS, possibly using the compiler itself
         var dict={
@@ -467,7 +469,7 @@ var py = (function () {
         return type('dict', [], dict);
     })();
 
-    builtin.print = console.log;
+    builtin.print = function(x) { console.log(getattr(x, '__str__')()); };
     builtin.input=function(msg){ prompt(msg,''); };
 
     // all operation must be defined because the interpreter must test
@@ -526,10 +528,6 @@ var py = (function () {
                 result=getattr(y, '__radd__')(x);
                 if (result!==NotImplemented)
                     return result;
-            }
-
-            if (type(x)=='number' && type(y)==='number'){
-                return x+y;
             }
 
             // check JS types and add them too
@@ -671,37 +669,56 @@ var py = (function () {
             // through the base classes of type(a) excluding metaclasses.
 
             function bound(attribute){
-                if (issubclass(target, type)){
+                // classes are type instances
+                if (isinstance(target, type)){
                     // if the target is a type, then return the method
                     return attribute;
                 }
-                else if (isinstance(attribute, function_base) || typeof(attribute) === 'function'){
+                else if (isinstance(attribute, function_base) || (isinstance(target, object) && typeof(attribute) === 'function')) {
                     // if the target is a function return a new function with the target as the first argument
                     function bounded(){
                         return attribute.apply(target, append(target, arguments));
                     }
-                    return bounded
+                    return bounded;
                 }
+                else if (target)
 
                 return attribute;
             }
 
             // a.__dict__[name]
-            if (name in target){
+            if (target.__dict__ && target.__dict__[name]!==undefined){
                 return bound(target.__dict__[name]);
             }
-            else if (name in type(target)){
+            else if (type(target)[name]!==undefined){
                 return bound(type(target).__dict__[name]);
             }
-            else{
+            else if (target[name]!==undefined)
+            {
+                // test if the JS object contains the given method
+                return target[name];
+            }
+            else if (len(arguments)==3)
+            {
+                // if the attribute isn't found return the default value if given
+                return default_value;
+            }
+            else
+            {
                 // search on the base classes
                 // todo search for an attribute on the class hierarchy
 
-                // if the attribute isn't found return the default value if given
-                if (len(arguments)==3)
-                    return default_value;
+//                if (bool(target.__bases__)){
+//                    for (var i=0; i<len(target.__bases__); i++)
+//                    {
+//                        try{
+//                            return getattr(target.__bases__[i], name);
+//                        } catch (e){
+//                        }
+//                    }
+//                }
 
-                throw 'missing attribute'
+                throw 'missing attribute';
                 throw AttributeError();
             }
         }
@@ -727,7 +744,6 @@ var py = (function () {
     var delattr = builtin.delattr = function(target, name){
         // delattr(object, name)
         // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
-
     };
 
     return builtin;

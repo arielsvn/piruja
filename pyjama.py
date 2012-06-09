@@ -244,8 +244,10 @@ class JCompiler(metaclass = Compiler_Checks):
             @concat(', ')
             def data():
                 yield 'arg_names: [%s]' % ', '.join('\'%s\'' % str(arg.arg) for arg in node.args.args)
-                yield 'starargs: %s' % ('true' if node.args.vararg else 'false')
-                yield 'kwargs: %s' % ('true' if node.args.kwarg else 'false')
+                if node.args.vararg:
+                    yield 'starargs: %s' % 'true'
+                if node.args.kwarg:
+                    yield 'kwargs: %s' % 'true'
             yield '__$data__: { %s }' % data()
 
         scope.define(name)
@@ -709,11 +711,22 @@ while True:
 js = JCompiler()
 
 code = """
-def foo(x, y=1):
-    return x+y
+class A:
+    def bla(self):
+        return 1
 
-def printfoo():
-    print(foo(2,1))
+    def foo(self):
+        console.log('foo from A')
+
+class B:
+    def foo(self):
+        console.log('foo from B')
+
+class C(A,B):
+    def foo(self):
+        A.foo(self)
+        B.foo(self)
+        console.log('foo from C')
 """
 
 program = compile(code)
