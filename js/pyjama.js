@@ -2,9 +2,12 @@ var py = (function () {
     var builtin = {};
 
     var len = builtin.len = function(seq){
-        if (seq.__len__)
+        // hasattr and getattr can't be called here, because infinite recursion
+        if ( seq.__len__)
+        {
             return seq.__len__();
-        else if (seq.length!==undefined){
+        }
+        else if (seq.length!==undefined) {
             // function argument length
             return seq.length;
         }
@@ -187,24 +190,11 @@ var py = (function () {
         }
     }
 
+    var no_instance_members = ['__new__', '__base__', '__bases__', '__name__', '__class__', "__dict__"];
+
     function copy_members(from, to) {
         for (var key in from)
             to[key] = from[key];
-    }
-
-    var no_instance_members = ['__new__', '__base__', '__bases__', '__name__', '__class__', "__dict__"];
-
-    function extend(child, parent) {
-        for (var key in parent)
-            if (!contains(no_instance_members, key))
-                child[key] = parent[key];
-
-        if (!(child.__bases__))
-            child.__bases__=[];
-
-        // add the parent to the bases list
-        child.__base__=parent;
-        child.__bases__.push(parent);
     }
 
     var object = builtin.object = (function () {
@@ -216,66 +206,142 @@ var py = (function () {
         object.__base__ = undefined; // object.__base__ returns nothing
         object.__bases__ = [];
 
-        object.__new__ = function (cls) {
-            // Called to create a new instance of class cls. __new__() is a static method
-            // don't need to declare it as such
-            // when object is called returns a new instance
+        var __dict__={
+            '__new__': function (cls) {
+                // Called to create a new instance of class cls. __new__() is a static method
+                // don't need to declare it as such
 
-            if (cls.__dict__ && '__new__' in cls.__dict__){
-                // the class doesn't define a new method
-                return cls.__new__.apply(cls, arguments);
-            }
-            // allocate memory for the object
-            else {
                 // this will be the object instance
                 // note that when called calls the __call__ method
                 function instance() {
-                    if (!('__call__' in instance))
+                    if (!hasattr(instance, '__call__'))
                         throw 'object is not callable';
 
                     // call method should be bound to the instance
-                    return instance.__call__.apply(instance, arguments);
+                    return getattr(instance, '__call__').apply(instance, arguments);
                 }
 
                 instance.__class__ = cls;
                 instance.__dict__ = {};
 
                 // instance don't inherit, instead bound class members (copy and add self parameter)
-                bound_members(instance, cls, no_instance_members);
+//                bound_members(instance, cls, no_instance_members);
 
                 // cls.__dict__ contains the members declared inside the class
-                if (cls.__dict__)
-                    bound_members(instance, cls.__dict__);
+                // and those members should be
+//                if (cls.__dict__)
+//                    bound_members(instance, cls.__dict__);
 
                 return instance;
-            }
-        };
-        object.__init__ = function (self) { };
+            },
+            '__init__':function (self) { },
 
-        object.__setattr__ = function (self, name, value) {
-            throw new AttributeError(object, name);
-        };
-        object.__getattr__ = function (self, name) {
-            // TODO if the object doesn't contain the method then search it in the tree
-            return self[name];
-        };
-        object.__delattr__ = function (self, name) {
-            self[name] = undefined
+            '__getattribute__': function(self, name){
+                // Called unconditionally to implement attribute accesses for instances of the class
+                // If the class also defines __getattr__(), the latter will not be called unless
+                // __getattribute__() either calls it explicitly or raises an AttributeError.
+
+                // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
+                // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
+                // through the base classes of type(a) excluding metaclasses.
+
+                function check_attribute(attribute) {
+                    // check if the attribute implements the descriptor protocol
+                    if (attribute.__dict__ && attribute.__dict__['__get__']!==undefined) {
+                        // __get__(self, instance, owner)
+                        // If binding to an object instance, a.x is transformed into the call:
+                        // type(a).__dict__['x'].__get__(a, type(a))
+                        var descriptor = attribute.__dict__['__get__'];
+                        return descriptor(self, type(self));
+                    }
+                    else if (isinstance(attribute, function_base)) {
+                        // if the target is a function return a new function with the target as the first argument
+                        return method(self, attribute);
+                    }
+
+                    // in other case return the attribute directly
+                    return attribute;
+                }
+
+                // a.__dict__[name]
+                if (self.__dict__ && self.__dict__[name] !== undefined){
+                    return check_attribute(self.__dict__[name]);
+                }
+
+                var target_type=type(self);
+                // search the attribute in the class hierachy
+                var attr=getattr(target_type, name, undefined);
+                if (attr !== undefined) {
+                    return check_attribute(attr);
+                }
+
+                if (self[name] !== undefined)
+                {
+                    // test if the JS object contains the given method
+                    return self[name];
+                }
+                else
+                {
+                    // search on the base classes
+                    // todo search for an attribute on the class hierarchy
+
+                    if (bool(self.__bases__)){
+                        for (var i=0; i<len(self.__bases__); i++)
+                        {
+                            try{
+                                return getattr(self.__bases__[i], name);
+                            } catch (e){
+                            }
+                        }
+                    }
+
+                    throw 'missing attribute';
+                    throw AttributeError();
+                }
+            },
+
+            '__setattr__': function (self, name, value) {
+                throw new AttributeError(object, name);
+            },
+            '__getattr__': function (self, name) {
+                // TODO if the object doesn't contain the method then search it in the tree
+                return self[name];
+            },
+            '__delattr__':function (self, name) {
+                self[name] = undefined
+            },
+
+            '__str__': function(self){return self;},
+
+            '__call__': function(){
+                // when object is called returns a new instance
+                var instance= object.__new__.apply(object, append(object, arguments));
+                getattr(instance,'__init__').apply(instance, arguments);
+                return instance;
+            },
+            '__doc__': 'The most base type'
         };
 
-        object.__str__ = function(self){return self;};
-
-        object.__call__ = function(){
-            // when object is called returns a new instance
-            var instance= object.__new__.apply(object, append(object, arguments));
-            instance.__init__.apply(instance, arguments);
-            return instance;
-        };
+        copy_members(__dict__, object);
+        object.__dict__ = object; // this should be a dictionary object
 
         return object;
     })();
 
     var type = builtin.type = (function () {
+        function extend(child, parent) {
+//            for (var key in parent)
+//                if (!contains(no_instance_members, key))
+//                    child[key] = parent[key];
+
+//            if (!(child.__bases__))
+//                child.__bases__=[];
+
+            // add the parent to the bases list
+            child.__base__=parent;
+            child.__bases__.push(parent);
+        }
+
         // type(object) -> the object's type
         // type(name, bases, dict) -> a new type
         function type(name, bases, dict) {
@@ -292,13 +358,13 @@ var py = (function () {
                     return name.__class__;
 
                 // todo convert the JS object to a python object
-                return typeof(name);
+                //return typeof(name);
             }
             else {
                 // when a type is called it returns a new type
                 function Class() {
                     // create the instance
-                    var instance = Class.__new__.apply(Class, append(Class, arguments));
+                    var instance = getattr(Class, '__new__').apply(Class, append(Class, arguments));
 
                     instance.__class__ = Class;
 
@@ -307,7 +373,7 @@ var py = (function () {
                     // the type method isn't part of the python builtins
                     // bound_members(instance, Class, no_instance_members);
 
-                    instance.__init__.apply(instance, arguments);
+                    getattr(instance, '__init__').apply(instance, arguments);
                     return instance;
                 }
 
@@ -319,12 +385,11 @@ var py = (function () {
                 extend(Class, builtin.object);
 
                 Class.__new__ = function(cls){
-                    return builtin.object.__new__(Class);
+                    return object.__new__(Class);
                 };
 
                 // TODO: Change this to add the methods like the new-style class (diamond form)
-                var reversed = bases.reverse();
-                for (var i=0; i<len(reversed); i++)
+                for (var i=0; i<len(bases); i++)
                     extend(Class, bases[i])
 
                 copy_members(dict, Class);
@@ -336,9 +401,72 @@ var py = (function () {
             }
         };
 
+        // returns an unbound method
+        type.__getattribute__=function(self, name){
+            if (self.__dict__[name]!==undefined)
+                return self.__dict__[name];
+
+            if (bool(self.__bases__)){
+                for (var i=0; i<len(self.__bases__); i++)
+                {
+                    try{
+                        return getattr(self.__bases__[i], name);
+                    } catch (e){
+                    }
+                }
+            }
+        };
+
         return type;
     })();
     builtin.object.__class__ = builtin.type;
+
+    var getattr = builtin.getattr = (function(){
+        function getattr(target, name, default_value){
+            try{
+                if (target.__getattribute__)
+                    return target.__getattribute__(name);
+                else
+                {
+                    var getattribute = getattr(type(target), '__getattribute__');
+                    return getattribute(target, name);
+                }
+            } catch(e) {
+//                if (isinstance(e, AttributeError))
+                if (target.__getattr__!==undefined){
+                    return target.__getattr__(name)
+                }
+                if (len(arguments)==3){
+                    return default_value;
+                }
+                throw AttributeError()
+            }
+        }
+
+        return getattr;
+    })();
+
+    var hasattr = builtin.hasattr = function(target, name){
+        // hasattr(object, name) -> bool
+        // Return whether the object has an attribute with the given name.
+        //  (This is done by calling getattr(object, name) and catching exceptions.)
+        try{
+            return getattr(target, name) !== undefined;
+        } catch (e){
+            return false;
+        }
+    };
+
+    var setattr = builtin.setattr=function(target, name, value){
+        // todo implement builtins.setattr
+        throw 'not implemented';
+    };
+
+    var delattr = builtin.delattr = function(target, name){
+        // delattr(object, name)
+        // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
+        throw 'not implemented'
+    };
 
     var number=builtin.number=(function(){
         var __dict__={
@@ -351,22 +479,14 @@ var py = (function () {
         return type('number',[], __dict__);
     })();
 
-    var int = builtin.int=(function(){
-        var __dict__={};
-
-        return type('int',[number], __dict__);
-    })();
-
+    // prepare arrays to behave like python lists
     (function (){
-        // prepare arrays to behave like python lists
-
         // Called to implement the built-in function len()
         Array.prototype.__len__ = function(){return this.length;};
     })();
 
+    // prepare numbers to behave like python numbers
     (function (){
-        // prepare numbers to behave like python numbers
-
         // Number represents an instance of the class number
         Number.prototype.__class__ = number;
     })();
@@ -378,71 +498,69 @@ var py = (function () {
     // Its truth value is true.
     var NotImplemented = builtin.NotImplemented = object();
 
-    var function_base = builtin.function_base=(function(){
+    function process_arguments(data, args) {
+        // parses an array of arguments into other array of arguments that should be passed to the function with the given data
+        var func_args = len(data.arg_names), // number of arguments in the original function
+            call_args = len(args) - 2, // number of arguments in the call stmt
+            kwargs = args[len(args) - 1];
+
+        var result = new Array(func_args); // arguments that will be passed to the target function
+        for (var i = 0; i < func_args; i++) {
+            // skip the first argument because it's the function itself
+            var arg_name = data.arg_names[i];
+            if (i < call_args) {
+                result[i] = args[i + 1];
+                if (arg_name in kwargs)
+                    throw 'parameter specified more than once';
+            }
+            else {
+                if (kwargs[arg_name])
+                    result[i] = kwargs[arg_name];
+                else if (i >= func_args - len(self.__defaults__)) {
+                    // no value was specified for the given parameter, use the default one
+                    result[i] = self.__defaults__[i - (func_args - len(self.__defaults__))];
+                }
+                else throw 'missing parameter ' + arg_name;
+            }
+        }
+
+        if (func_args < call_args) {
+            // more parameters than needed, add them to the star args
+            if (!data.starargs)
+                throw 'too many parameters';
+            var star_length = call_args - func_args;
+            if ('$arg' in kwargs)
+                star_length += len(kwargs.$arg);
+            // this shoould be a tuple, i think...
+            var start_args = new Array(star_length);
+            for (i = 0; i < call_args - func_args; i++)
+                start_args[i] = args[func_args + 1 + i];
+            if (kwargs.$arg) {
+                for (i = call_args - func_args; i < star_length; i++)
+                    start_args[i] = kwargs.$arg[call_args - func_args - i];
+            }
+            result.push(start_args);
+        }
+
+        // check for duplicated values and add new items
+        if (data.kwarg) {
+            // check for extra keys in the dictionary
+            // this should be a Python dict
+            // and the original dict should be cloned
+            result.push(data.kwarg);
+        }
+
+        return result;
+    }
+
+    // this is internal in the builtins
+    var function_base = (function(){
         // all functions inherit from the class function in python, however
         // this class isn't in the builtins.
 
         var dict={
             __call__: function(self){
-                // TODO: process arguments here... (defaults, varargs, kwargs, etc...)
-
-                // get specific interpreter data about this function
-                var data=self.__$data__,
-                    func_args = len(data.arg_names), // number of arguments in the original function
-                    call_args=len(arguments)-2, // number of arguments in the call stmt
-                    kwargs = arguments[len(arguments)-1];
-
-                var result=new Array(func_args); // arguments that will be passed to the target function
-                for (var i=0; i<func_args; i++)
-                {
-                    // skip the first argument because it's the function itself
-                    var arg_name=data.arg_names[i];
-                    if (i<call_args)
-                    {
-                        result[i]=arguments[i+1];
-
-                        if (arg_name in kwargs)
-                            throw 'parameter specified more than once';
-                    }
-                    else {
-                        if (kwargs[arg_name])
-                            result[i] = kwargs[arg_name];
-                        else if (i >= func_args - len(self.__defaults__)){
-                            // no value was specified for the given parameter, use the default one
-                            result[i]=self.__defaults__[i - (func_args - len(self.__defaults__))];
-                        }
-                        else throw 'missing parameter ' + arg_name;
-                    }
-                }
-
-                if (func_args<call_args) {
-                    // more parameters than needed, add them to the star args
-                    if (!data.starargs)
-                        throw 'too many parameters';
-
-                    var star_length=call_args - func_args;
-                    if ('$arg' in kwargs)
-                        star_length += len(kwargs.$arg);
-
-                    // this shoould be a tuple, i think...
-                    var start_args=new Array(star_length);
-                    for (i=0; i< call_args - func_args; i++)
-                        start_args[i]=arguments[func_args + 1 + i];
-                    if (kwargs.$arg){
-                        for (i=call_args-func_args; i< star_length; i++)
-                            start_args[i]=kwargs.$arg[call_args-func_args-i];
-                    }
-                    result.push(start_args);
-                }
-
-                // check for duplicated values and add new items
-                if (data.kwarg){
-                    // check for extra keys in the dictionary
-                    // this should be a Python dict
-                    // and the original dict should be cloned
-                    result.push(data.kwarg);
-                }
-
+                var result = process_arguments(self.__$data__, arguments);
                 return self.__code__.apply(this, result);
             },
             __init__: function(self, attributes, code) {
@@ -457,7 +575,37 @@ var py = (function () {
             }
         };
 
-        return builtin.type('function', [], dict);
+        return type('function', [], dict);
+    })();
+
+    // this type is internal in the builtins
+    var method = (function(){
+        // represents an instance method
+        // An instance method object combines a class, a class instance and any callable object
+        // (normally a user-defined function).
+        // User-defined method objects may be created when getting an attribute of a class, if that
+        // attribute is a user-defined function object or a class method object.
+
+        var dict={
+            '__init__': function(self, instance, func){
+                self.__self__ = instance; //__self__ is the class instance object
+                self.__func__ = func; //__func__ is the function object
+
+                self.__doc__= func.__doc__; //__doc__ is the method’s documentation (same as __func__.__doc__);
+                self.__name__ = func.__name__; // __name__ is the method name (same as __func__.__name__);
+                self.__module__ = func.__module__; //__module__ is the name of the module the method was defined in, or None if unavailable
+
+                // todo Methods also support accessing (but not setting) the arbitrary function attributes on the underlying function object.
+            },
+            '__call__': function (self) {
+                // When an instance method object is called, the underlying function (__func__) is called, inserting
+                // the class instance (__self__) in front of the argument list.
+                var args=append(self.__self__, Array.apply(this, arguments).slice(1));
+                self.__func__.apply(self.__self__, args);
+            }
+        };
+
+        return type('method', [], dict);
     })();
 
     builtin.dict=(function(){
@@ -660,91 +808,27 @@ var py = (function () {
 
     };
 
-    var getattr = builtin.getattr = (function(){
-        function getattr(target, name, default_value){
-            // todo implement builtins.getattr
 
-            // The default behavior for attribute access is to get, set, or delete the attribute from an object’s dictionary
-            // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
-            // through the base classes of type(a) excluding metaclasses.
-
-            function bound(attribute){
-                // classes are type instances
-                if (isinstance(target, type)){
-                    // if the target is a type, then return the method
-                    return attribute;
-                }
-                else if (isinstance(attribute, function_base) || (isinstance(target, object) && typeof(attribute) === 'function')) {
-                    // if the target is a function return a new function with the target as the first argument
-                    function bounded(){
-                        return attribute.apply(target, append(target, arguments));
-                    }
-                    return bounded;
-                }
-                else if (target)
-
-                return attribute;
-            }
-
-            // a.__dict__[name]
-            if (target.__dict__ && target.__dict__[name]!==undefined){
-                return bound(target.__dict__[name]);
-            }
-            else if (type(target)[name]!==undefined){
-                return bound(type(target).__dict__[name]);
-            }
-            else if (target[name]!==undefined)
-            {
-                // test if the JS object contains the given method
-                return target[name];
-            }
-            else if (len(arguments)==3)
-            {
-                // if the attribute isn't found return the default value if given
-                return default_value;
-            }
-            else
-            {
-                // search on the base classes
-                // todo search for an attribute on the class hierarchy
-
-//                if (bool(target.__bases__)){
-//                    for (var i=0; i<len(target.__bases__); i++)
-//                    {
-//                        try{
-//                            return getattr(target.__bases__[i], name);
-//                        } catch (e){
-//                        }
-//                    }
-//                }
-
-                throw 'missing attribute';
-                throw AttributeError();
-            }
-        }
-
-        return getattr;
-    })();
-
-    var hasattr = builtin.hasattr = function(target, name){
-        // hasattr(object, name) -> bool
-        // Return whether the object has an attribute with the given name.
-        //  (This is done by calling getattr(object, name) and catching exceptions.)
-        try{
-            return getattr(target, name) !== undefined;
-        } catch (e){
-            return false;
-        }
-    };
-
-    var setattr = builtin.setattr=function(target, name, value){
-        // todo implement builtins.setattr
-    };
-
-    var delattr = builtin.delattr = function(target, name){
-        // delattr(object, name)
-        // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
-    };
 
     return builtin;
+})();
+
+var B = (function(){
+    var type=py.type, function_base=py.function_base, getattr=py.getattr;
+    var __$dict__ = {};
+    var foo;
+    foo = (function(){
+        function foo(self){
+
+            getattr(console,'log')("foo from B", {});
+        }
+        var $attributes={
+            name: 'foo',
+            module: 'main',
+            __$data__: { arg_names: ['self'] }
+        };
+        return function_base($attributes, foo);
+    })();
+    __$dict__.foo = foo;
+    return type('B', [], __$dict__);
 })();

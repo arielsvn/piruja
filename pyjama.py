@@ -99,7 +99,7 @@ class Compiler_Checks(type):
         return type.__new__(mcs, name, bases, dict)
 
 class JCompiler(metaclass = Compiler_Checks):
-    builtins = ['type', 'function_base', 'iter', 'range', 'next', 'isinstance', 'print', '$op']
+    builtins = ['type', 'function_base', 'iter', 'range', 'next', 'isinstance', 'print', '$op','getattr', 'hasattr', 'setattr']
 
     def import_builtins(self):
         namespace = 'py'
@@ -711,23 +711,12 @@ while True:
 js = JCompiler()
 
 code = """
-class A:
-    def bla(self):
-        return 1
+def test1():
+    return ok(True)
 
-    def foo(self):
-        console.log('foo from A')
-
-class B:
-    def foo(self):
-        console.log('foo from B')
-
-class C(A,B):
-    def foo(self):
-        A.foo(self)
-        B.foo(self)
-        console.log('foo from C')
+test('test1', test1)
 """
 
 program = compile(code)
 print(program)
+
