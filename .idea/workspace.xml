@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d753ed98-99ad-4e35-b0ce-de2df02b39ec" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/js/tests/Test.js" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/js/tests/qunit/qunit-git.css" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/js/tests/qunit/qunit-git.js" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/js/tests/run_tests.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pyjama.py" afterPath="$PROJECT_DIR$/pyjama.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test_page.html" afterPath="$PROJECT_DIR$/test_page.html" />
-      <change type="MOVED" beforePath="D:\[Ariel]\[Projects]\PyJama\PyJama\pyjama.js" afterPath="$PROJECT_DIR$/js/pyjama.js" />
-    </list>
+    <list default="true" id="d753ed98-99ad-4e35-b0ce-de2df02b39ec" name="Default" comment="" />
     <ignored path="PyJama.iws" />
     <ignored path=".idea/workspace.xml" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -634,7 +624,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1296" height="772" extended-state="6" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32899022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Data Sources" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -690,7 +680,7 @@
     <option name="INCLUDE_TEXT_INTO_SHELF" value="false" />
     <option name="CREATE_PATCH_EXPAND_DETAILS_DEFAULT" value="true" />
     <option name="FORCE_NON_EMPTY_COMMENT" value="false" />
-    <option name="LAST_COMMIT_MESSAGE" value="working on the type hierachy" />
+    <option name="LAST_COMMIT_MESSAGE" value="added JS test files" />
     <option name="MAKE_NEW_CHANGELIST_ACTIVE" value="true" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="false" />
     <option name="CHECK_FILES_UP_TO_DATE_BEFORE_COMMIT" value="false" />
@@ -717,6 +707,7 @@
     <MESSAGE value="lambda expression, without python vars (__name__, __class__, etc.)" />
     <MESSAGE value="function calls with default arguments, named arguments and starargs" />
     <MESSAGE value="working on the type hierachy" />
+    <MESSAGE value="added JS test files" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
