@@ -89,8 +89,7 @@ var py = (function () {
         return Object.prototype.hasOwnProperty.call(obj, key);
     }
 
-    var
-        breaker = {},
+    var breaker = {},
         ArrayProto = Array.prototype,
         nativeForEach = ArrayProto.forEach,
         nativeEvery = ArrayProto.every,
@@ -197,6 +196,111 @@ var py = (function () {
             to[key] = from[key];
     }
 
+    function getattribute(objectname, attrname){
+        // flag used to signal no attribute
+        var no_attribute={};
+
+        function find_attribute(target){
+            // returns the attribute from the type hierachy of target, assuming that target is a type
+            if (attrname in target.__dict__) {
+                return target.__dict__[attrname];
+            }
+            // search in all bases of target, possibly using the mro
+            for (var i=1; i<len(target.__dict__.__mro__);i++)
+                if (target.__mro__[i][attrname])
+                    return target.__mro__[i][attrname];
+
+            return no_attribute;
+        }
+
+        function check_descriptor(attribute){
+            if (hasattr(attribute, '__get__'))
+                return attribute.__get__(objectname);
+
+            return attribute;
+        }
+
+        // implements attribute search on objects
+        // 1. If attrname is a special (i.e. Python-provided) attribute for objectname, return it.
+
+        // 2. Check objectname.__class__.__dict__ for attrname. If it exists and is a
+        //   data-descriptor, return the descriptor result. Search all bases of objectname.__class__
+        //   for the same case.
+        var attribute=find_attribute(objectname.__class__);
+        if (hasattr(attribute, '__get__'))
+           return check_descriptor(attribute);
+
+        // 3. Check objectname.__dict__ for attrname, and return if found. If objectname is a
+        //   class, search its bases too. If it is a class and a descriptor exists in it or its bases, return the
+        //   descriptor result.
+        if ('__mro__' in objectname.__dict__)
+        {
+            // objectname is a class
+            var attr=find_attribute(objectname);
+            return check_descriptor(attr);
+        } else {
+            if (attrname in objectname.__dict__)
+                return check_descriptor(objectname.__dict__[attrname]);
+        }
+
+        // 4. Check objectname.__class__.__dict__ for attrname. If it exists and is a non-data
+        //   descriptor, return the descriptor result. If it exists, and is not a descriptor, just return it. If it
+        //   exists and is a data descriptor, we shouldn't be here because we would have returned at
+        //   point 2. Search all bases of objectname.__class__ for same case.
+        if (attribute!==no_attribute)
+            return attribute;
+
+        // 5. Raise AttributeError
+        throw AttributeError();
+    }
+
+    var $function = builtin.$function = function (code, name, data){
+        function $function() {
+            // todo proccess arguments and include starargs and kwargs
+//            var result = process_arguments(data, arguments);
+            var result=arguments;
+            return code.apply(this, result);
+        }
+
+        $function.__name__= name;
+        $function.__dict__ = $function;
+        $function.__call__ = $function;
+
+        $function.__code__ = code;
+
+        $function.__class__ = type;
+        $function.__base__=object;
+        $function.__bases__ = [object];
+        $function.__mro__=[$function, object];
+
+        $function.__get__ = function(instance, C){
+            // bounded functions are implemented using descriptors
+            // return a bound method passing the instance as the first argument implicitly
+            if (instance) {
+                function $method(){
+                    var args=append(instance, arguments);
+                    return $function.apply(instance, args);
+                }
+
+                $method.__name__=name;
+                $method.__dict__ = $method;
+                $method.__call__ = $method;
+
+                $function.__code__ = code;
+
+                $function.__class__ = type;
+                $function.__base__=object;
+                $function.__bases__ = [object];
+                $function.__mro__=[$method, object];
+
+                return $method;
+            }
+            return $function;
+        };
+
+        return $function;
+    };
+
     var object = builtin.object = (function () {
         function object() {
             return object.__call__.apply(object, arguments);
@@ -206,8 +310,19 @@ var py = (function () {
         object.__base__ = undefined; // object.__base__ returns nothing
         object.__bases__ = [];
 
-        var __dict__={
-            '__new__': function (cls) {
+        var __dict__ = {
+            // the object's class
+            __class__: undefined,
+            // str(string[, encoding[, errors]]) -> str
+            //
+            // Create a new string object from the given encoded string.
+            // encoding defaults to the current default string encoding.
+            // errors can be 'strict', 'replace' or 'ignore' and defaults to 'strict'.
+            __doc__: 'The most base type',
+
+            __new__: function(cls){
+                // T.__new__(S, ...) -> a new object with type S, a subtype of T
+
                 // Called to create a new instance of class cls. __new__() is a static method
                 // don't need to declare it as such
 
@@ -224,19 +339,11 @@ var py = (function () {
                 instance.__class__ = cls;
                 instance.__dict__ = {};
 
-                // instance don't inherit, instead bound class members (copy and add self parameter)
-//                bound_members(instance, cls, no_instance_members);
-
-                // cls.__dict__ contains the members declared inside the class
-                // and those members should be
-//                if (cls.__dict__)
-//                    bound_members(instance, cls.__dict__);
-
                 return instance;
             },
-            '__init__':function (self) { },
+            __getattribute__: $function(function(self, name){
+                // x.__getattribute__('name') <==> x.name
 
-            '__getattribute__': function(self, name){
                 // Called unconditionally to implement attribute accesses for instances of the class
                 // If the class also defines __getattr__(), the latter will not be called unless
                 // __getattribute__() either calls it explicitly or raises an AttributeError.
@@ -245,85 +352,109 @@ var py = (function () {
                 // a.x has a lookup chain starting with a.__dict__['x'], then type(a).__dict__['x'], and continuing
                 // through the base classes of type(a) excluding metaclasses.
 
-                function check_attribute(attribute) {
-                    // check if the attribute implements the descriptor protocol
-                    if (attribute.__dict__ && attribute.__dict__['__get__']!==undefined) {
-                        // __get__(self, instance, owner)
-                        // If binding to an object instance, a.x is transformed into the call:
-                        // type(a).__dict__['x'].__get__(a, type(a))
-                        var descriptor = attribute.__dict__['__get__'];
-                        return descriptor(self, type(self));
-                    }
-                    else if (isinstance(attribute, function_base)) {
-                        // if the target is a function return a new function with the target as the first argument
-                        return method(self, attribute);
-                    }
-
-                    // in other case return the attribute directly
-                    return attribute;
-                }
-
-                // a.__dict__[name]
-                if (self.__dict__ && self.__dict__[name] !== undefined){
-                    return check_attribute(self.__dict__[name]);
-                }
-
-                var target_type=type(self);
-                // search the attribute in the class hierachy
-                var attr=getattr(target_type, name, undefined);
-                if (attr !== undefined) {
-                    return check_attribute(attr);
-                }
-
-                if (self[name] !== undefined)
-                {
-                    // test if the JS object contains the given method
-                    return self[name];
-                }
-                else
-                {
-                    // search on the base classes
-                    // todo search for an attribute on the class hierarchy
-
-                    if (bool(self.__bases__)){
-                        for (var i=0; i<len(self.__bases__); i++)
-                        {
-                            try{
-                                return getattr(self.__bases__[i], name);
-                            } catch (e){
-                            }
-                        }
-                    }
-
-                    throw 'missing attribute';
-                    throw AttributeError();
-                }
-            },
-
-            '__setattr__': function (self, name, value) {
-                throw new AttributeError(object, name);
-            },
-            '__getattr__': function (self, name) {
-                // TODO if the object doesn't contain the method then search it in the tree
-                return self[name];
-            },
-            '__delattr__':function (self, name) {
-                self[name] = undefined
-            },
-
-            '__str__': function(self){return self;},
-
-            '__call__': function(){
+                return getattribute(self, name);
+            }, '__getattribute__', {}),
+            __call__: function() {
                 // when object is called returns a new instance
                 var instance= object.__new__.apply(object, append(object, arguments));
                 getattr(instance,'__init__').apply(instance, arguments);
                 return instance;
             },
-            '__doc__': 'The most base type'
+            __init__: $function(function(self){
+                // x.__init__(...) initializes x; see x.__class__.__doc__ for signature
+            }, '__init__', {}),
+
+            __ne__: function(self){
+                // x.__ne__(y) <==> x!=y
+
+                // <slot wrapper '__ne__' of 'object' objects>
+            },
+            __setattr__: function(self){
+                // x.__setattr__('name', value) <==> x.name = value
+
+                // <slot wrapper '__setattr__' of 'object' objects>
+            },
+            __reduce_ex__: function(self){
+                // helper for pickle
+
+                // <method '__reduce_ex__' of 'object' objects>
+            },
+            __subclasshook__: function(self){
+                // Abstract classes can override this to customize issubclass().
+                //
+                // This is invoked early on by abc.ABCMeta.__subclasscheck__().
+                // It should return True, False or NotImplemented.  If it returns
+                // NotImplemented, the normal algorithm is used.  Otherwise, it
+                // overrides the normal algorithm (and the outcome is cached).
+
+                // <method '__subclasshook__' of 'object' objects>
+            },
+            __reduce__: function(self){
+                // helper for pickle
+
+                // <method '__reduce__' of 'object' objects>
+            },
+            __str__: function(self){
+                // x.__str__() <==> str(x)
+
+                // <slot wrapper '__str__' of 'object' objects>
+            },
+            __format__: function(self){
+                // default object formatter
+
+                // <method '__format__' of 'object' objects>
+            },
+            __delattr__: function(self){
+                // x.__delattr__('name') <==> del x.name
+
+                // <slot wrapper '__delattr__' of 'object' objects>
+            },
+            __le__: function(self){
+                // x.__le__(y) <==> x<=y
+
+                // <slot wrapper '__le__' of 'object' objects>
+            },
+            __repr__: function(self){
+                // x.__repr__() <==> repr(x)
+
+                // <slot wrapper '__repr__' of 'object' objects>
+            },
+            __gt__: function(self){
+                // x.__gt__(y) <==> x>y
+
+                // <slot wrapper '__gt__' of 'object' objects>
+            },
+            __hash__: function(self){
+                // x.__hash__() <==> hash(x)
+
+                // <slot wrapper '__hash__' of 'object' objects>
+            },
+            __lt__: function(self){
+                // x.__lt__(y) <==> x<y
+
+                // <slot wrapper '__lt__' of 'object' objects>
+            },
+            __eq__: function(self){
+                // x.__eq__(y) <==> x==y
+
+                // <slot wrapper '__eq__' of 'object' objects>
+            },
+            __sizeof__: function(self){
+                // __sizeof__() -> size of object in memory, in bytes
+
+                // <method '__sizeof__' of 'object' objects>
+            },
+            __ge__: function(self){
+                // x.__ge__(y) <==> x>=y
+
+                // <slot wrapper '__ge__' of 'object' objects>
+            }
         };
 
         copy_members(__dict__, object);
-        object.__dict__ = object; // this should be a dictionary object
+
+        // dictionary wrapper using the object itself
+        object.__dict__ = object;
 
         return object;
     })();
@@ -348,99 +479,155 @@ var py = (function () {
             return type.__call__(name, bases, dict);
         }
 
-        type.__bases__= [];
-        type.__class__ = type;
-        extend(type, builtin.object);
+        var __dict__ = {
+            __base__: object,
+            __bases__: [object],
+            __class__: type,
+            __module__: builtin,
+            __name__: 'type',
+            __doc__: 'type of all types',
+            __dict__: undefined,
+            __weakrefoffset__: undefined,
+            __abstractmethods__: undefined,
+            __mro__: undefined,
+            __instancecheck__: undefined,
+            __dictoffset__: undefined,
+            __itemsize__: undefined,
+            __subclasscheck__: undefined,
+            __basicsize__: undefined,
+            __flags__: undefined,
 
-        type.__call__ = function(name, bases, dict){
-            if (bases==undefined && dict===undefined){
-                if (name.__class__)
-                    return name.__class__;
+            __new__: function(cls){
+                // T.__new__(S, ...) -> a new object with type S, a subtype of T
 
-                // todo convert the JS object to a python object
-                //return typeof(name);
-            }
-            else {
-                // when a type is called it returns a new type
-                function Class() {
-                    // create the instance
-                    var instance = getattr(Class, '__new__').apply(Class, append(Class, arguments));
+                // <built-in method __new__ of type object at 0x1E1B7E20>
+            },
+            __init__: function(self){
+                // x.__init__(...) initializes x; see x.__class__.__doc__ for signature
 
-                    instance.__class__ = Class;
+                // <slot wrapper '__init__' of 'type' objects>
+            },
+            __getattribute__: function(self, name){
+                // x.__getattribute__('name') <==> x.name
 
-                    // members bound to it's instance should be of type method,
-                    // but that could depend on the implementation, because
-                    // the type method isn't part of the python builtins
-                    // bound_members(instance, Class, no_instance_members);
+                return object.__getattribute__(self, name);
+            },
+            __call__: function(name, bases, dict){
+                // x.__call__(...) <==> x(...)
 
-                    getattr(instance, '__init__').apply(instance, arguments);
-                    return instance;
+                if (bases==undefined && dict===undefined){
+                    if (name.__class__)
+                        return name.__class__;
+
+                    // todo convert the JS object to a python object
+                    //return typeof(name);
                 }
+                else {
+                    // when a type is called it returns a new type
+                    function Class() {
+                        // create the instance
+                        var instance = getattr(Class, '__new__').apply(Class, append(Class, arguments));
 
-                // init the bases list, it will be populated with the extend method
-                // and isn't going to be copied from the base class
-                Class.__bases__ = [];
-                Class.__class__ = type;
+                        instance.__class__ = Class;
 
-                extend(Class, builtin.object);
+                        // members bound to it's instance should be of type method,
+                        // but that could depend on the implementation, because
+                        // the type method isn't part of the python builtins
+                        // bound_members(instance, Class, no_instance_members);
 
-                Class.__new__ = function(cls){
-                    return object.__new__(Class);
-                };
-
-                // TODO: Change this to add the methods like the new-style class (diamond form)
-                for (var i=0; i<len(bases); i++)
-                    extend(Class, bases[i])
-
-                copy_members(dict, Class);
-                Class.__dict__ = Class;
-
-                Class.__name__ = name;
-
-                return Class
-            }
-        };
-
-        // returns an unbound method
-        type.__getattribute__=function(self, name){
-            if (self.__dict__[name]!==undefined)
-                return self.__dict__[name];
-
-            if (bool(self.__bases__)){
-                for (var i=0; i<len(self.__bases__); i++)
-                {
-                    try{
-                        return getattr(self.__bases__[i], name);
-                    } catch (e){
+                        getattr(instance, '__init__').apply(instance, arguments);
+                        return instance;
                     }
+
+                    // init the bases list, it will be populated with the extend method
+                    // and isn't going to be copied from the base class
+                    Class.__bases__ = [];
+                    Class.__class__ = type;
+
+                    extend(Class, builtin.object);
+
+                    Class.__new__ = function(cls){
+                        return object.__new__(Class);
+                    };
+
+                    // TODO: Change this to add the methods like the new-style class (diamond form)
+                    for (var i=0; i<len(bases); i++)
+                        extend(Class, bases[i])
+
+                    copy_members(dict, Class);
+                    Class.__dict__ = Class;
+
+                    Class.__name__ = name;
+
+                    return Class
                 }
+            },
+            __setattr__: function(self){
+                // x.__setattr__('name', value) <==> x.name = value
+
+                // <slot wrapper '__setattr__' of 'type' objects>
+            },
+            __subclasses__: function(self){
+                // __subclasses__() -> list of immediate subclasses
+
+                // <method '__subclasses__' of 'type' objects>
+            },
+            __prepare__: function(self){
+                // __prepare__() -> dict
+                // used to create the namespace for the class statement
+
+                // <method '__prepare__' of 'type' objects>
+            },
+            __delattr__: function(self){
+                // x.__delattr__('name') <==> del x.name
+
+                // <slot wrapper '__delattr__' of 'type' objects>
+            },
+            mro: function(self){
+                // mro() -> list
+                // return a type's method resolution order
+
+                // <method 'mro' of 'type' objects>
+            },
+            __repr__: function(self){
+                // x.__repr__() <==> repr(x)
+
+                // <slot wrapper '__repr__' of 'type' objects>
             }
         };
+
+        copy_members(__dict__, type);
+        type.__dict__=type;
 
         return type;
     })();
-    builtin.object.__class__ = builtin.type;
+
+    object.__dict__.__class__ = type;
 
     var getattr = builtin.getattr = (function(){
         function getattr(target, name, default_value){
-            try{
-                if (target.__getattribute__)
-                    return target.__getattribute__(name);
-                else
-                {
-                    var getattribute = getattr(type(target), '__getattribute__');
-                    return getattribute(target, name);
-                }
-            } catch(e) {
-//                if (isinstance(e, AttributeError))
-                if (target.__getattr__!==undefined){
-                    return target.__getattr__(name)
-                }
-                if (len(arguments)==3){
-                    return default_value;
-                }
-                throw AttributeError()
+            // method for getting attributes from the target, exist and it's bounded
+            var _getattribute=getattribute(target, '__getattribute__');
+
+            try {
+                return _getattribute(name);
+            } catch(e) { }
+
+            try {
+                // if __getattr__ isn't defined this trows an AttributeError
+                var _getattr=_getattribute('__getattr__');
+                // if the method is defined, then return it's value
+                return _getattr(name);
+            } catch(e) { }
+
+            // if a default value is provided
+            if (len(arguments)==3){
+                return default_value;
             }
+
+            // in other case raise an AttributeError
+            throw 'attribute was not found: ' + name;
+            throw AttributeError();
         }
 
         return getattr;
@@ -496,7 +683,7 @@ var py = (function () {
     // do not implement the operation for the operands provided. (The interpreter will
     // then try the reflected operation, or some other fallback, depending on the operator.)
     // Its truth value is true.
-    var NotImplemented = builtin.NotImplemented = object();
+    //var NotImplemented = builtin.NotImplemented = object();
 
     function process_arguments(data, args) {
         // parses an array of arguments into other array of arguments that should be passed to the function with the given data
@@ -554,7 +741,7 @@ var py = (function () {
     }
 
     // this is internal in the builtins
-    var function_base = (function(){
+    var $1function = (function(){
         // all functions inherit from the class function in python, however
         // this class isn't in the builtins.
 
@@ -808,27 +995,5 @@ var py = (function () {
 
     };
 
-
-
     return builtin;
-})();
-
-var B = (function(){
-    var type=py.type, function_base=py.function_base, getattr=py.getattr;
-    var __$dict__ = {};
-    var foo;
-    foo = (function(){
-        function foo(self){
-
-            getattr(console,'log')("foo from B", {});
-        }
-        var $attributes={
-            name: 'foo',
-            module: 'main',
-            __$data__: { arg_names: ['self'] }
-        };
-        return function_base($attributes, foo);
-    })();
-    __$dict__.foo = foo;
-    return type('B', [], __$dict__);
 })();
