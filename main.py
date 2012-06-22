@@ -19,6 +19,8 @@ class A:
     def foo(self):
         print('foo from A')
 
+
+
 #    @descriptor
 #    def __getattribute__(self, item):
 #        print('getattribute called')
@@ -42,11 +44,24 @@ class B:
     def __init__(self):
         print('B init called')
 
+    def __get__(self, instance, owner):
+        print('descriptor at B')
+        print('instance: %s' % instance)
+        print('owner: %s' % owner)
+        return instance
+
 class C(B,A):
-    pass
+    bla=B()
+
+    def helper(self, instance, owner):
+        print('descriptor at C')
+        return instance
+
+    bla.__get__= helper
+
 a=C()
 #a.block='block in __dict__'
-print(A.__bases__)
+print(C.bla)
 #print(a.block)
 
 def write_dict(target=object):
@@ -88,5 +103,3 @@ def write_dict(target=object):
             write_attribute(method)
 
     print('};')
-
-write_dict(type)
