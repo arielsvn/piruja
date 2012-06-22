@@ -205,7 +205,7 @@ var py = (function () {
         // flag used to signal no attribute
         var no_attribute={};
 
-        function find_attribute(target){
+        function find_attribute(target) {
             // returns the attribute from the type hierachy of target, assuming that target is a type
             if (attrname in target.__dict__) {
                 return target.__dict__[attrname];
@@ -233,24 +233,25 @@ var py = (function () {
         }
 
         function check_descriptor(attribute){
-            var _get;
-            try{
-                _get=$getattribute(attribute, '__get__');
-            }catch (e){
+            try {
+                var _get = $getattribute(attribute, '__get__');
+
+                // If binding to an object instance, a.x is transformed into the call:
+                // type(a).__dict__['x'].__get__(a, type(a)).
+                if (!isinstance(objectname, type))
+                    return _get(objectname, type(objectname));
+                else
+                    return _get(undefined, type(objectname))
+
+            } catch (e) {
                 // catch only attribute errors
                 return attribute;
             }
-
-            // If binding to an object instance, a.x is transformed into the call:
-            // type(a).__dict__['x'].__get__(a, type(a)).
-            if (!isinstance(objectname, type))
-                return _get(objectname, type(objectname));
-            else
-                return _get(undefined, type(objectname))
         }
 
         // implements attribute search on objects
         // 1. If attrname is a special (i.e. Python-provided) attribute for objectname, return it.
+
 
         // 2. Check objectname.__class__.__dict__ for attrname. If it exists and is a
         //   data-descriptor, return the descriptor result. Search all bases of objectname.__class__
