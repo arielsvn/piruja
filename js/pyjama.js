@@ -206,7 +206,7 @@ var py = (function () {
         var no_attribute={};
 
         function find_attribute(target) {
-            // returns the attribute from the type hierachy of target, assuming that target is a type
+            // returns the attribute from the type hierarchy of target, assuming that target is a type
             if (attrname in target.__dict__) {
                 return target.__dict__[attrname];
             }
@@ -249,9 +249,33 @@ var py = (function () {
             }
         }
 
+        function is_special_method(){
+            return attrname === '__getattribute__'
+                || attrname === '__get__'
+                || attrname === '__init__'
+                ;
+        }
+
+        function get_special_method(){
+            // special attribute lookup works only on the object type
+            var cls=objectname.__class__;
+
+            var attr = find_attribute(cls);
+            if (attr !== no_attribute) {
+                if (!isinstance(objectname, type))
+                    // objectname is an instance
+                    return $function.__get__(attr, objectname, type(objectname));
+                else
+                    return $function.__get__(attr, undefined, type(objectname))
+            }
+
+            throw 'AttributeError()';
+        }
+
         // implements attribute search on objects
         // 1. If attrname is a special (i.e. Python-provided) attribute for objectname, return it.
-
+        if (is_special_method())
+            return get_special_method();
 
         // 2. Check objectname.__class__.__dict__ for attrname. If it exists and is a
         //   data-descriptor, return the descriptor result. Search all bases of objectname.__class__
@@ -329,8 +353,8 @@ var py = (function () {
             },
             __call__: function() {
                 // when object is called returns a new instance
-                var instance= object.__new__.apply(object, append(object, arguments));
-                getattr(instance,'__init__').apply(instance, arguments);
+                var instance = object.__new__.apply(object, append(object, arguments));
+                getattr(instance, '__init__').apply(instance, arguments);
                 return instance;
             },
             __init__: $function(function(self){
@@ -343,7 +367,7 @@ var py = (function () {
 
                 // <slot wrapper '__ne__' of 'object' objects>
             },
-            __setattr__: function(self){
+            __setattr__: function(self, name, value){
                 // x.__setattr__('name', value) <==> x.name = value
 
                 // <slot wrapper '__setattr__' of 'object' objects>
@@ -353,7 +377,7 @@ var py = (function () {
 
                 // <method '__reduce_ex__' of 'object' objects>
             },
-            __subclasshook__: function(self){
+            __subclasshook__: $function(function(self){
                 // Abstract classes can override this to customize issubclass().
                 //
                 // This is invoked early on by abc.ABCMeta.__subclasscheck__().
@@ -361,8 +385,8 @@ var py = (function () {
                 // NotImplemented, the normal algorithm is used.  Otherwise, it
                 // overrides the normal algorithm (and the outcome is cached).
 
-                // <method '__subclasshook__' of 'object' objects>
-            },
+                return NotImplemented;
+            }, '__subclasshook__', {}),
             __reduce__: function(self){
                 // helper for pickle
 
@@ -466,12 +490,10 @@ var py = (function () {
 
                 // <built-in method __new__ of type object at 0x1E1B7E20>
             },
+            // x.__init__(...) initializes x; see x.__class__.__doc__ for signature
+            // use same method, note that both methods do nothing
+            __init__: object.__init__,
 
-            __init__: $function(function(self){
-                // x.__init__(...) initializes x; see x.__class__.__doc__ for signature
-
-                // <slot wrapper '__init__' of 'type' objects>
-            },'__init__',{}),
             __call__: function(name, bases, dict){
                 // x.__call__(...) <==> x(...)
 
@@ -519,7 +541,7 @@ var py = (function () {
 
                     Class.__name__ = name;
 
-                    return Class
+                    return Class;
                 }
             },
             __setattr__: function(self){
@@ -633,7 +655,7 @@ var py = (function () {
     // do not implement the operation for the operands provided. (The interpreter will
     // then try the reflected operation, or some other fallback, depending on the operator.)
     // Its truth value is true.
-    //var NotImplemented = builtin.NotImplemented = object();
+    var NotImplemented = builtin.NotImplemented = object();
 
     function process_arguments(data, args) {
         // parses an array of arguments into other array of arguments that should be passed to the function with the given data

@@ -16,7 +16,7 @@ test('$function is not bound when descriptor is called on class (A.foo)', functi
 
     var target=py.$function(foo, 'foo', {});
 
-    var method=target.__get__(undefined, {});
+    var method = py.getattr(target, '__get__')(undefined, {});
 
     equal(method(1), 1);
 });
@@ -85,7 +85,11 @@ test('__getattribute__ method on $function is bounded', function() {
 
     var attr = py.object.__getattribute__(target, '__getattribute__');
 
+    // call getattribute with one parameter, the first parameter is bounded
     var result=attr('__get__');
+
+    // the expected result is the method $function.__get__
+    equal(result.__code__, py.$function.__get__.__code__)
 });
 
 test('bounded method on instance', function() {
