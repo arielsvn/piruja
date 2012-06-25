@@ -106,5 +106,6 @@ test('bounded method on instance', function() {
     var result = py.object.__getattribute__(instance, 'foo');
 
     equal(result(1), 1);
+    equal(result(2), 2);
 });
 
