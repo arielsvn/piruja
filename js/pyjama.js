@@ -82,6 +82,74 @@ var py = (function () {
         return Object.prototype.hasOwnProperty.call(obj, key);
     }
 
+    var breaker = {},
+        ArrayProto = Array.prototype,
+        nativeForEach = ArrayProto.forEach,
+        nativeEvery = ArrayProto.every,
+        nativeSome = ArrayProto.some,
+        nativeIndexOf = ArrayProto.indexOf
+        ;
+
+    // The cornerstone, an `each` implementation, aka `forEach`.
+    // Handles objects with the built-in `forEach`, arrays, and raw objects.
+    // Delegates to **ECMAScript 5**'s native `forEach` if available.
+    function each(obj, iterator, context) {
+        if (obj == null) return;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+            obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+            for (var i = 0, l = obj.length; i < l; i++) {
+                if (i in obj && iterator.call(context, obj[i], i, obj) === breaker) return;
+            }
+        } else {
+            for (var key in obj) {
+                if (has(obj, key)) {
+                    if (iterator.call(context, obj[key], key, obj) === breaker) return;
+                }
+            }
+        }
+    }
+
+    // Determine whether all of the elements match a truth test.
+    // Delegates to **ECMAScript 5**'s native `every` if available.
+    // Aliased as `all`.
+    function every(obj, iterator, context) {
+        var result = true;
+        if (obj == null) return result;
+        if (nativeEvery && obj.every === nativeEvery) return obj.every(iterator, context);
+        each(obj, function (value, index, list) {
+            if (!(result = result && iterator.call(context, value, index, list))) return breaker;
+        });
+        return result;
+    }
+
+    // Determine if at least one element in the object matches a truth test.
+    // Delegates to **ECMAScript 5**'s native `some` if available.
+    // Aliased as `any`.
+    function any(obj, iterator, context) {
+        iterator || (iterator = _.identity);
+        var result = false;
+        if (obj == null) return result;
+        if (nativeSome && obj.some === nativeSome) return obj.some(iterator, context);
+        each(obj, function (value, index, list) {
+            if (result || (result = iterator.call(context, value, index, list))) return breaker;
+        });
+        return !!result;
+    }
+
+    // Determine if a given value is included in the array or object using `===`.
+    // Aliased as `contains`.
+    function contains(obj, target) {
+        var found = false;
+        if (obj == null) return found;
+        if (nativeIndexOf && obj.indexOf === nativeIndexOf)
+            return obj.indexOf(target) != -1;
+        found = any(obj, function (value) {
+            return value === target;
+        });
+        return found;
+    }
+
     function append(item, array) {
         var length=1;
         if (array) length=array.length+1;
@@ -123,8 +191,6 @@ var py = (function () {
         obj.__base__ = object;
         obj.__bases__ = [object];
         obj.__mro__ = [obj, object];
-
-        obj.__getattribute__ = $getattribute;
     }
 
     function mimic_instance(obj, name, cls){
@@ -221,8 +287,6 @@ var py = (function () {
 
     var $getattribute = $function(function (objectname, attrname){
         // flag used to signal no attribute
-
-
         function is_descriptor(attribute) {
             // base class when searching a function instance
             if (attribute.__class__ === $function)
@@ -243,11 +307,7 @@ var py = (function () {
 
                 // If binding to an object instance, a.x is transformed into the call:
                 // type(a).__dict__['x'].__get__(a, type(a)).
-                if (!isinstance(objectname, type))
-                    return _get(objectname, type(objectname));
-                else
-                    return _get(undefined, type(objectname));
-
+                return _get(objectname, type(objectname));
             } catch (e) {
                 // catch only attribute errors
                 return attribute;
@@ -265,19 +325,15 @@ var py = (function () {
 
         function get_special_method(){
             // special attribute lookup works only on the object type
-            var cls=objectname.__class__;
-
-            var attr = $find_attribute(cls, attrname);
+            var attr = $find_attribute(type(objectname), attrname);
             if (attr !== no_attribute) {
                 if (attrname==='__new__'){
                     // __new__() is a static method (special-cased so you need not declare it as such)
                     // return the function not bounded, like a static method
                     return attr;
-                } else if (!isinstance(objectname, type))
+                } else
                     // objectname is an instance
                     return $function.__get__(attr, objectname, type(objectname));
-                else
-                    return $function.__get__(attr, undefined, type(objectname))
             }
 
             throw 'AttributeError()';
@@ -478,13 +534,6 @@ var py = (function () {
         object.__dict__ = object;
     }
 
-    function $find_getattribute(target){
-        // finds the getattribute method and returns it bounded
-        var cls = type(target);
-        var attribute=$find_attribute(cls, '__getattribute__');
-        return attribute.__get__(target, cls);
-    }
-
     // configure type properties
     {
         var __type_dict__ = {
@@ -517,7 +566,6 @@ var py = (function () {
                         return self.__mro__[i][name];
 
                 throw 'AttributeError()';
-
             }, '__getattribute__', {}),
 
             __new__: function(cls, name, bases, dict){
@@ -526,11 +574,18 @@ var py = (function () {
                 // result is an instance of cls
                 var result = object.__new__(cls);
 
+                // arguments below are setted here (__new__) because they are python provided
+                // attributes for classes, but they could also be setted on __init__
+
                 // add the required attributes so it can act as a class
                 result.__name__ = name;
 
-                bases.push(object); // todo fix base classes for any type
-                result.__bases__=object;
+                var _bases=Array.apply(cls, bases);
+                if (!contains(_bases, object)) _bases.push(object);
+
+                result.__bases__ = _bases; // todo __bases__ should be a tuple
+                result.__base__ = _bases[0];
+
                 // result.__class__ is already set
                 result.__mro__ = [result, object]; // todo calculate the MRO
 
@@ -602,15 +657,16 @@ var py = (function () {
 
     var getattr = builtin.getattr = $function(function getattr(target, name, default_value){
             // method for getting attributes from the target, exist and it's bounded
-            var _getattribute=$getattribute(target, '__getattribute__');
+            var _getattribute=type.__getattribute__(type(target), '__getattribute__');
 
+            // _getattribute is unbound
             try {
-                return _getattribute(name);
+                return _getattribute(target, name);
             } catch(e) { }
 
             try {
                 // if __getattr__ isn't defined this trows an AttributeError
-                var _getattr=_getattribute('__getattr__');
+                var _getattr=_getattribute(target, '__getattr__');
                 // if the method is defined, then return it's value
                 return _getattr(name);
             } catch(e) { }

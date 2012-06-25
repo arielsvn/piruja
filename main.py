@@ -4,6 +4,11 @@ class Meta(type):
         print("Metaclass getattribute invoked:", args)
         return type.__getattribute__(*args)
 
+    def __getattr__(self, item):
+        print('Metaclass getattr invoked: ', item)
+        return None
+        pass
+
 class B(object):
 #    def __init__(self):
 ##        print('B init called')
@@ -19,12 +24,14 @@ class C(B, metaclass=Meta):
         return object.__getattribute__(*args)
 
 c=C()
-issubclass()
-print('type.__getattribute__: %s' % type.__getattribute__)
-print('object.__getattribute__: %s' % object.__getattribute__)
+
+#print('type.__getattribute__: %s' % type.__getattribute__)
+#print('object.__getattribute__: %s' % object.__getattribute__)
 
 print('c.__getattribute__: %s' % c.__getattribute__)
-print('c.__new__: %s' % c.__new__)
-
+#print('c.__new__: %s' % c.__new__)
+#
+print('---')
 print('C.__getattribute__: %s' % C.__getattribute__)
-print('C.__new__: %s' % C.__new__)
+print(C.cxy)
+#print('C.__new__: %s' % C.__new__)

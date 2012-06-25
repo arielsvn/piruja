@@ -22,7 +22,7 @@ test('$function is not bound when descriptor is called on class (A.foo)', functi
 });
 
 test('getattribute method lookup on object class', function() {
-    var result = py.object.__getattribute__(py.object, '__getattribute__');
+    var result = py.getattr(py.object, '__getattribute__');
     equal(result, py.object.__getattribute__);
 });
 
@@ -43,7 +43,7 @@ test('getattribute over object instance', function() {
 });
 
 test('__init__ method lookup on object class', function() {
-    var result = py.object.__getattribute__(py.object, '__init__');
+    var result = py.getattr(py.object, '__init__');
     equal(result, py.object.__init__);
 });
 
@@ -51,7 +51,7 @@ test('__init__ method lookup over object instance', function() {
     var object=py.object, len=py.len,
         instance = object.__new__(object);
 
-    var result = py.object.__getattribute__(instance, '__init__');
+    var result = py.getattr(instance, '__init__');
 
     equal(result.__code__, py.object.__init__.__code__);
 });
@@ -65,9 +65,9 @@ test('getattribute over object subclass', function() {
     B.__bases__=[object];
     B.__mro__=[B, object];
 
-    var result = py.object.__getattribute__(B, '__getattribute__');
+    var result = py.getattr(B, '__getattribute__');
 
-    equal(result.__code__, py.object.__getattribute__.__code__);
+    equal(result, py.object.__getattribute__);
 });
 
 test('hasattr on $function with __get__', function() {
@@ -108,4 +108,46 @@ test('bounded method on instance', function() {
     equal(result(1), 1);
     equal(result(2), 2);
 });
+
+test('user method over instance', function() {
+    var type=py.type,
+        object=py.object;
+
+    var dict={
+        foo: py.$function(function(self){return 1;}, 'foo', {})
+    };
+    var cls=type('Name', [object], dict);
+    var instance=cls();
+
+    var bound=py.getattr(instance, 'foo');
+    equal(bound(), 1)
+});
+
+test('class attribute over instance lookup', function() {
+    var type=py.type,
+        object=py.object;
+
+    var dict={
+        foo: 1
+    };
+    var cls=type('Name', [object], dict);
+    var instance=cls();
+
+    var attr=py.getattr(instance, 'foo');
+    equal(attr, 1)
+});
+
+test('class attribute over class lookup', function() {
+    var type = py.type,
+        object=py.object;
+
+    var dict={
+        foo: 1
+    };
+    var cls=type('Name', [object], dict);
+
+    var attr=py.getattr(cls, 'foo');
+    equal(attr, 1);
+});
+
 
