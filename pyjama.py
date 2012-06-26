@@ -197,24 +197,16 @@ class JCompiler(metaclass = Compiler_Checks):
         # todo function attributes can be smaller
 
         template =\
-"""%(name)s = (function(){
-    function %(name)s(%(arguments)s){
+"""%(name)s = $function(function(%(arguments)s){
         %(vars)s
 %(code)s
-    }
-    var $attributes={
-%(attributes)s
-    };
-    return function_base($attributes, %(name)s);
-})();"""
+}, '%(name)s', {%(attributes)s});"""
 
         arguments = [str(arg.arg) for arg in node.args.args]
         if node.args.vararg:
             arguments += [node.args.vararg]
         if node.args.kwarg:
             arguments += [node.args.kwarg]
-
-        defaults = ', '.join(self.visit(expr, BaseScope(scope, False)) for expr in node.args.defaults)
 
         class FunctionScope(BaseScope):
             def __init__(self, parent=None):
@@ -232,27 +224,25 @@ class JCompiler(metaclass = Compiler_Checks):
         # at the top of the function all local vars are declared
         vars = JCompiler.scope_vars_declaration(function_scope)
 
-        @concat(',\n')
+        @concat(', ')
         def attributes():
-            yield 'name: \'%s\'' % name
-            yield 'module: \'%s\'' % scope.root().name
-            yield 'globals: %s' % scope.root().name
+#            yield 'name: \'%s\'' % name
+#            yield 'module: \'%s\'' % scope.root().name
+#            yield 'globals: %s' % scope.root().name
             if node.args.defaults:
                 yield 'defaults: [%s]' % ', '.join(self.visit(expr, BaseScope(scope, False)) for expr in node.args.defaults)
             # yield 'kwdefaults: {}'
-
-            @concat(', ')
-            def data():
+            if node.args.args:
                 yield 'arg_names: [%s]' % ', '.join('\'%s\'' % str(arg.arg) for arg in node.args.args)
-                if node.args.vararg:
-                    yield 'starargs: %s' % 'true'
-                if node.args.kwarg:
-                    yield 'kwargs: %s' % 'true'
-            yield '__$data__: { %s }' % data()
+            if node.args.vararg:
+                yield 'starargs: %s' % 'true'
+            if node.args.kwarg:
+                yield 'kwargs: %s' % 'true'
 
         scope.define(name)
         return template % {'name': name, 'code': JCompiler.indent(body, 2),
-                           'arguments': ', '.join(arguments), 'vars': vars,
+                           'arguments': ', '.join(arguments),
+                           'vars': vars,
                            'attributes': JCompiler.indent(attributes(),2)}
 
     def visit_ClassDef(self, node, scope):
@@ -711,10 +701,14 @@ while True:
 js = JCompiler()
 
 code = """
-def test1():
-    return ok(True)
+class A:
+    def test1(x,y=1,z=dicy, *arg, **kw):
+        return ok(True)
 
-test('test1', test1)
+    test('test1', test1)
+
+def test2(x,y=1,z=dicy, *arg, **kw):
+    return equals(x,y)
 """
 
 program = compile(code)

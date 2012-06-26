@@ -1,6 +1,14 @@
 var py = (function () {
     var builtin = {};
 
+    var $getid=(function(){
+        // returns an unique id for an object
+        var id=1;
+        return function(){
+            return id++;
+        };
+    })();
+
     var len = builtin.len = function(seq){
         // hasattr and getattr can't be called here, because infinite recursion
         if ( seq.__len__)
@@ -191,6 +199,8 @@ var py = (function () {
         obj.__base__ = object;
         obj.__bases__ = [object];
         obj.__mro__ = [obj, object];
+
+        obj.__$id__ = $getid();
     }
 
     function mimic_instance(obj, name, cls){
@@ -201,13 +211,20 @@ var py = (function () {
             obj.__call__ = obj;
 
         obj.__class__ = cls;
+        obj.__$id__ = $getid();
     }
 
     var $function = builtin.$function = (function () {
-        function $function(code, name, data) {
+        // wraps the given code (function) and process calls like the python interpreter
+        // code: function with the code
+        // name: function name (will be stored in the __name__ attribute)
+        // flags: indicates whether the function has (*args, **kwargs) in all variants (0, 1, 2, 3)
+        // arg_names: array with the argument names as strings
+        // defaults: array with the defaults for the len(defaults) last attributes (without *args and **kwargs)
+        function $function(code, name, flags, arg_names, defaults) {
             // __new__
             function $function_instance() {
-                // todo proccess arguments and include starargs and kwargs
+                // todo process arguments and include starargs and kwargs
 //            var result = process_arguments(data, arguments);
                 var result = arguments;
                 return code.apply($function_instance, result);
@@ -269,22 +286,6 @@ var py = (function () {
         return $method;
     };
 
-    var no_attribute={};
-    function $find_attribute(target, attrname) {
-        // returns the attribute from the type hierarchy of target, assuming that target is a type
-        if (attrname in target.__dict__) {
-            return target.__dict__[attrname];
-        }
-
-        // search all bases of target, possibly using the mro, but only if target is a type
-        if (isinstance(target, type))
-            for (var i=1; i<len(target.__dict__.__mro__);i++)
-                if (target.__mro__[i][attrname])
-                    return target.__mro__[i][attrname];
-
-        return no_attribute;
-    }
-
     var $getattribute = $function(function (objectname, attrname){
         // flag used to signal no attribute
         function is_descriptor(attribute) {
@@ -299,6 +300,22 @@ var py = (function () {
                 // catch only attribute errors
                 return false;
             }
+        }
+
+        var no_attribute={};
+        function $find_attribute(target) {
+            // returns the attribute from the type hierarchy of target, assuming that target is a type
+            if (attrname in target.__dict__) {
+                return target.__dict__[attrname];
+            }
+
+            // search all bases of target, possibly using the mro, but only if target is a type
+            if (isinstance(target, type))
+                for (var i=1; i<len(target.__dict__.__mro__);i++)
+                    if (target.__mro__[i][attrname])
+                        return target.__mro__[i][attrname];
+
+            return no_attribute;
         }
 
         function check_descriptor(attribute){
@@ -325,7 +342,7 @@ var py = (function () {
 
         function get_special_method(){
             // special attribute lookup works only on the object type
-            var attr = $find_attribute(type(objectname), attrname);
+            var attr = $find_attribute(type(objectname));
             if (attr !== no_attribute) {
                 if (attrname==='__new__'){
                     // __new__() is a static method (special-cased so you need not declare it as such)
@@ -347,7 +364,7 @@ var py = (function () {
         // 2. Check objectname.__class__.__dict__ for attrname. If it exists and is a
         //   data-descriptor, return the descriptor result. Search all bases of objectname.__class__
         //   for the same case.
-        var attribute=$find_attribute(objectname.__class__, attrname);
+        var attribute=$find_attribute(objectname.__class__);
         if (attribute!==no_attribute && is_descriptor(attribute))
             return check_descriptor(attribute);
 
@@ -357,7 +374,7 @@ var py = (function () {
         if ('__mro__' in objectname.__dict__)
         {
             // objectname is a class
-            var attr=$find_attribute(objectname, attrname);
+            var attr=$find_attribute(objectname);
             return check_descriptor(attr);
         } else {
             if (attrname in objectname.__dict__)
@@ -400,6 +417,8 @@ var py = (function () {
         object.__base__ = undefined; // object.__base__ returns nothing
         object.__bases__ = [];
 
+        object.__$id__ = $getid();
+
         var __object_dict__ = {
             // the object's class
             __class__: type,
@@ -430,12 +449,14 @@ var py = (function () {
                 instance.__class__ = cls;
                 instance.__dict__ = instance;
 
+                instance.__$id__ = $getid();
+
                 return instance;
             },
-            __call__: function() {
+            __call__: $function(function(self) {
                 // when object is called returns a new instance with the given arguments
                 return $create_object(object, arguments);
-            },
+            }, '__call__',{}),
             __init__: $function(function(self){
                 // x.__init__(...) initializes x; see x.__class__.__doc__ for signature
             }, '__init__', {}),
@@ -580,6 +601,8 @@ var py = (function () {
                 // add the required attributes so it can act as a class
                 result.__name__ = name;
 
+                result.__$id__ = $getid();
+
                 var _bases=Array.apply(cls, bases);
                 if (!contains(_bases, object)) _bases.push(object);
 
@@ -655,6 +678,16 @@ var py = (function () {
         type.__dict__=type;
     }
 
+    builtin.id = $function(function(p_object){
+        // id(object) -> integer
+
+        // Return the identity of an object. This is guaranteed to be unique among
+        // simultaneously existing objects. (Hint: it's a number stored in the attribute
+        // "__$id__" of any object.)
+        // this attribute is specific for this implementation
+        return p_object.__$id__;
+    }, 'id', {});
+
     var getattr = builtin.getattr = $function(function getattr(target, name, default_value){
             // method for getting attributes from the target, exist and it's bounded
             var _getattribute=type.__getattribute__(type(target), '__getattribute__');
@@ -681,36 +714,56 @@ var py = (function () {
             throw AttributeError();
         }, 'getattr',{});
 
-    var hasattr = builtin.hasattr = function(target, name){
+    var hasattr = builtin.hasattr =$function(function(target, name){
         // hasattr(object, name) -> bool
         // Return whether the object has an attribute with the given name.
         //  (This is done by calling getattr(object, name) and catching exceptions.)
         var none={};
-
         return getattr(target, name, none) !== none;
-    };
+    }, 'hasattr', {});
 
-    var setattr = builtin.setattr=function(target, name, value){
-        // todo implement builtins.setattr
-        throw 'not implemented';
-    };
+    var setattr = builtin.setattr=$function(function(target, name, value){
+        // 1. Check objectname.__class__.__dict__ for attrname. If it exists and is a
+        // data-descriptor, use the descriptor to set the value. Search all bases of
+        // objectname.__class__ for the same case.
+        try {
+            var attr=getattr(type(target), name);
+            if (hasattr(attr, '__set__'))
+            {
+                getattr(attr, '__set__')(target, value);
+                return;
+            }
+        } catch (e){}
 
-    var delattr = builtin.delattr = function(target, name){
+        // 2. Insert something into objectname.__dict__ for key "attrname".
+        target[name] = value;
+    }, 'setattr', {});
+
+    var delattr = builtin.delattr = $function(function(target, name){
         // delattr(object, name)
         // Delete a named attribute on an object; delattr(x, 'y') is equivalent to ``del x.y''.
-        throw 'not implemented'
-    };
+        try {
+            var attr=getattr(type(target), name);
+            if (hasattr(attr, '__delete__'))
+            {
+                getattr(attr, '__delete__')(target);
+                return;
+            }
+        } catch (e){}
 
-//    var number=builtin.number=(function(){
-//        var __dict__={
-//            __add__: function(self, other){ return self+other; },
-//            __sub__: function(self, other){ return self-other; },
-//            __mult__: function(self, other){ return self*other; },
-//            __div__: function(self, other){ return self/other; }
-//        };
-//
-//        return type('number',[], __dict__);
-//    })();
+        delete(target[name]);
+    }, 'delattr', {});
+
+    var number=builtin.number=(function(){
+        var __dict__={
+            __add__: function(self, other){ return self+other; },
+            __sub__: function(self, other){ return self-other; },
+            __mult__: function(self, other){ return self*other; },
+            __div__: function(self, other){ return self/other; }
+        };
+
+        return type('number',[], __dict__);
+    })();
 
     // prepare arrays to behave like python lists
     (function (){
@@ -721,7 +774,7 @@ var py = (function () {
     // prepare numbers to behave like python numbers
     (function (){
         // Number represents an instance of the class number
-//        Number.prototype.__class__ = number;
+        Number.prototype.__class__ = number;
     })();
 
     // This type has a single value. There is a single object with this value
@@ -792,7 +845,7 @@ var py = (function () {
 
         };
 
-//        return type('dict', [], dict);
+        return type('dict', [], dict);
     })();
 
     builtin.print = function(x) { console.log(getattr(x, '__str__')()); };
