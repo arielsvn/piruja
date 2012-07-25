@@ -91,11 +91,12 @@ var py = (function () {
     }
 
     var breaker = {},
-        ArrayProto = Array.prototype,
-        nativeForEach = ArrayProto.forEach,
-        nativeEvery = ArrayProto.every,
-        nativeSome = ArrayProto.some,
-        nativeIndexOf = ArrayProto.indexOf
+        ArrayProto          = Array.prototype,
+        nativeForEach       = ArrayProto.forEach,
+        nativeEvery         = ArrayProto.every,
+        nativeSome          = ArrayProto.some,
+        nativeIndexOf       = ArrayProto.indexOf,
+        nativeFilter        = ArrayProto.filter
         ;
 
     // The cornerstone, an `each` implementation, aka `forEach`.
@@ -157,6 +158,20 @@ var py = (function () {
         });
         return found;
     }
+
+    // Return all the elements that pass a truth test.
+    // Delegates to **ECMAScript 5**'s native `filter` if available.
+    // Aliased as `select`.
+    // filter([1, 2, 3, 4, 5, 6], function(num){ return num % 2 == 0; }); => [2,4,6]
+    filter = function(obj, iterator, context) {
+        var results = [];
+        if (obj == null) return results;
+        if (nativeFilter && obj.filter === nativeFilter) return obj.filter(iterator, context);
+        each(obj, function(value, index, list) {
+            if (iterator.call(context, value, index, list)) results[results.length] = value;
+        });
+        return results;
+    };
 
     function append(item, array) {
         var length=1;
@@ -496,6 +511,7 @@ var py = (function () {
                 // x.__str__() <==> str(x)
 
                 // <slot wrapper '__str__' of 'object' objects>
+                return "<class '"+self.__name__+"'>";
             },
             __format__: function(self){
                 // default object formatter
@@ -610,7 +626,7 @@ var py = (function () {
                 result.__base__ = _bases[0];
 
                 // result.__class__ is already set
-                result.__mro__ = [result, object]; // todo calculate the MRO
+                result.__mro__ = type.mro(result);
 
                 result.__call__ = function(){
                     // a class is a callable object that when called creates a new instance of the given class
@@ -665,7 +681,58 @@ var py = (function () {
                 // mro() -> list
                 // return a type's method resolution order
 
-                // <method 'mro' of 'type' objects>
+                function $merge(seqs) {
+
+                    var result = [];
+
+                    while (1) {
+
+                        seqs = filter(seqs, function(seq){return seq.length>0});
+
+                        if (seqs.length === 0) return result;
+
+                        var head = null;
+
+                        for (var i=0; i<seqs.length; i++) {
+                            var head = seqs[i][0];
+
+                            check_tail:
+                                for (var j=0; j<seqs.length; j++) {
+                                    var tail = seqs[j].slice(1);
+                                    for (var k=0; k<tail.length; k++) {
+                                        if (tail[k] === head) {
+                                            head = null;
+                                            break check_tail;
+                                        }
+                                    }
+                                }
+
+                            if (head !== null)
+                                break;
+                        }
+
+                        if (head === null)
+                            throw "Inconsistent hierarchy";
+
+                        result.push(head);
+
+                        for (var i=0; i<seqs.length; i++) {
+                            if (seqs[i][0] === head) {
+                                seqs[i].shift();
+                            }
+                        }
+                    }
+
+                    return result;
+                }
+
+                var seqs = [[self]];
+                for (var i=0; i<self.__bases__.length; i++) {
+                    seqs.push(self.__bases__[i].__mro__.slice(0));
+                }
+                seqs.push(self.__bases__.slice(0));
+
+                return $merge(seqs);
             },
             __repr__: function(self){
                 // x.__repr__() <==> repr(x)

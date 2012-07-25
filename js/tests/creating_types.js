@@ -45,3 +45,41 @@ test('subclass created with correct attributes', function() {
     ok(py.issubclass(target, name), 'issubclass(target, name)');
     ok(py.issubclass(target, object), 'issubclass(target, object)');
 });
+
+test('various classes mro (1)', function() {
+    var type=py.type,
+        object=py.object,
+        O = object,
+        F = type('F', [O], {}),
+        E = type('E', [O], {}),
+        D = type('D', [O], {}),
+        C = type('C', [D, F], {}),
+        B = type('B', [D, E], {}),
+        A = type('A', [B, C], {});
+
+    deepEqual(F.__mro__, [F,O]);
+    deepEqual(E.__mro__, [E,O]);
+    deepEqual(D.__mro__, [D,O]);
+    deepEqual(C.__mro__, [C,D,F,O] );
+    deepEqual(B.__mro__, [B,D,E,O]);
+    deepEqual(A.__mro__, [A,B,C,D,E,F,O]);
+});
+
+test('various classes mro (2)', function() {
+    var type=py.type,
+        object=py.object,
+        O = object,
+        F = type('F', [O], {}),
+        E = type('E', [O], {}),
+        D = type('D', [O], {}),
+        C = type('C', [D, F], {}),
+        B = type('B', [E, D], {}),
+        A = type('A', [B, C], {});
+
+    deepEqual(F.__mro__, [F,O]);
+    deepEqual(E.__mro__, [E,O]);
+    deepEqual(D.__mro__, [D,O]);
+    deepEqual(C.__mro__, [C,D,F,O]);
+    deepEqual(B.__mro__, [B,E,D,O]);
+    deepEqual(A.__mro__, [A,B,E,C,D,F,O]);
+});

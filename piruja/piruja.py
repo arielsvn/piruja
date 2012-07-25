@@ -1,6 +1,6 @@
 from _ast import AST
 import ast
-import math
+from piruja.Common import templated_ast
 
 class BaseScope:
     def __init__(self, parent=None, semi_after=None):
@@ -162,29 +162,6 @@ class JCompiler(metaclass = Compiler_Checks):
         return '\n'.join('%(module)s.%(var)s = %(var)s;' % {'module': module_name, 'var': var}
         for var in scope.vars) if scope.vars else ''
 
-    @staticmethod
-    def build_ast(code, **kwnodes):
-        class Transformer(ast.NodeTransformer):
-            def check(self, node, name):
-                # Name(identifier id, expr_context ctx)
-                if name in kwnodes:
-                    return kwnodes[name]
-                else:
-                    return node
-
-            def visit_Name(self, node):
-                return self.check(node, node.id)
-
-            def visit_Import(self, node):
-                return self.check(node, node.names[0].name)
-
-        tree = ast.parse(code)
-        members = Transformer().visit(tree).body
-        if len(members) == 1:
-            return members[0]
-        else:
-            return members
-
     def visit_FunctionDef(self, node, scope):
         # FunctionDef(identifier name, arguments args,
         #   stmt* body, expr* decorator_list, expr? returns)
@@ -232,8 +209,8 @@ class JCompiler(metaclass = Compiler_Checks):
             if node.args.defaults:
                 yield 'defaults: [%s]' % ', '.join(self.visit(expr, BaseScope(scope, False)) for expr in node.args.defaults)
             # yield 'kwdefaults: {}'
-            if node.args.args:
-                yield 'arg_names: [%s]' % ', '.join('\'%s\'' % str(arg.arg) for arg in node.args.args)
+#            if node.args.args:
+#                yield 'arg_names: [%s]' % ', '.join('\'%s\'' % str(arg.arg) for arg in node.args.args)
             if node.args.vararg:
                 yield 'starargs: %s' % 'true'
             if node.args.kwarg:
@@ -407,7 +384,7 @@ var %(name)s=(function(){
                     import orelse
                     break
             """
-            transformed = JCompiler.build_ast(code,
+            transformed = templated_ast(code,
                 test=node.test,
                 body=node.body,
                 orelse=node.orelse
@@ -429,7 +406,7 @@ while True:
 """
         temp_iterable = JCompiler.inc_temp_var(getattr(scope, 'temp_iterable', '$i'))
         for_scope = PhantomScope(scope, True, temp_iterable=temp_iterable)
-        template = JCompiler.build_ast(code,
+        template = templated_ast(code,
             temp_store=ast.Name(id=temp_iterable, ctx=ast.Store()),
             temp_load=ast.Name(id=temp_iterable, ctx=ast.Load()),
             iterable=node.iter,
@@ -471,7 +448,7 @@ while True:
             code += 'import body; '
             code += '\nelse: import orelse; ' if len(handlers) > 1 else ''
 
-            return JCompiler.build_ast(code,
+            return templated_ast(code,
                 temp=ast.Name(id=catch_variable_name, ctx=ast.Load()),
                 exception=first.type,
                 var=ast.Name(id=first.name, ctx=ast.Store()),
@@ -701,14 +678,9 @@ while True:
 js = JCompiler()
 
 code = """
-class A:
-    def test1(x,y=1,z=dicy, *arg, **kw):
-        return ok(True)
-
-    test('test1', test1)
-
-def test2(x,y=1,z=dicy, *arg, **kw):
-    return equals(x,y)
+#def foo():
+yield 1
+return 1
 """
 
 program = compile(code)
